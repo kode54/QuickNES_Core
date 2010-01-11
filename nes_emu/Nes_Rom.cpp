@@ -1,7 +1,7 @@
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/
 
-#include "Nes_Emu.h"
+#include "Nes_Rom.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -23,15 +23,25 @@ Nes_Rom::Nes_Rom()
 {
 	prg_ = NULL;
 	chr_ = NULL;
-	prg_size_ = 0;
-	chr_size_ = 0;
-	mapper = 0;
+	reset();
 }
 
 Nes_Rom::~Nes_Rom()
 {
+	reset();
+}
+
+void Nes_Rom::reset()
+{
 	free( prg_ );
+	prg_ = NULL;
+	
 	free( chr_ );
+	chr_ = NULL;
+	
+	prg_size_ = 0;
+	chr_size_ = 0;
+	mapper = 0;
 }
 
 long Nes_Rom::round_to_bank_size( long n )
@@ -44,7 +54,9 @@ blargg_err_t Nes_Rom::resize_prg( long size )
 {
 	if ( size != prg_size_ )
 	{
-		void* p = realloc( prg_, round_to_bank_size( size ) );
+		// extra byte allows CPU to always read operand of instruction, which
+		// might go past end of ROM
+		void* p = realloc( prg_, round_to_bank_size( size ) + 1 );
 		BLARGG_CHECK_ALLOC( p || !size );
 		prg_ = (byte*) p;
 		prg_size_ = size;
@@ -66,7 +78,6 @@ blargg_err_t Nes_Rom::resize_chr( long size )
 
 // iNES reading
 
-
 struct ines_header_t {
 	BOOST::uint8_t signature [4];
 	BOOST::uint8_t prg_count; // number of 16K PRG banks
@@ -85,7 +96,7 @@ blargg_err_t Nes_Rom::load_ines_rom( Data_Reader& in )
 	if ( 0 != memcmp( h.signature, "NES\x1A", 4 ) )
 		return "Not a iNES ROM file";
 	
-	if ( h.zero [7] ) // handle header tagged with a fucking idiot's handle
+	if ( h.zero [7] ) // handle header defaced by a fucking idiot's handle
 		h.flags2 = 0;
 	
 	set_mapper( h.flags, h.flags2 );
@@ -124,7 +135,8 @@ blargg_err_t Nes_Rom::load_ines_rom( Data_Reader& in )
 //
 // A block can append data to the file by specifying an offset at the end of
 // the current file data.
-	
+
+typedef BOOST::uint8_t byte;
 static blargg_err_t apply_ips_patch( Data_Reader& patch, byte** file, long* file_size )
 {
 	byte signature [5];

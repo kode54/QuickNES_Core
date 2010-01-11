@@ -1,5 +1,5 @@
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/
 
 #include "Nes_Film.h"
 
@@ -51,7 +51,7 @@ void Nes_Film::clear( frame_count_t new_period )
 
 frame_count_t Nes_Film::constrain( frame_count_t t ) const
 {
-	if ( t != invalid_frame_count )
+	if ( t != invalid_frame_count && !empty() )
 	{
 		if ( t < begin_ )
 			t = begin_;

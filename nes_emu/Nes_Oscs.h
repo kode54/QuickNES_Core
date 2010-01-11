@@ -57,7 +57,7 @@ struct Nes_Square : Nes_Envelope
 	int phase;
 	int sweep_delay;
 	
-	typedef Blip_Synth<blip_good_quality,15> Synth;
+	typedef Blip_Synth<blip_good_quality,1> Synth;
 	const Synth* synth; // shared between squares
 	
 	void clock_sweep( int adjust );
@@ -74,8 +74,9 @@ struct Nes_Triangle : Nes_Osc
 	enum { phase_range = 16 };
 	int phase;
 	int linear_counter;
-	Blip_Synth<blip_good_quality,15> synth;
+	Blip_Synth<blip_good_quality,1> synth;
 	
+	int calc_amp() const;
 	void run( nes_time_t, nes_time_t );
 	void clock_linear_counter();
 	void reset() {
@@ -89,7 +90,7 @@ struct Nes_Triangle : Nes_Osc
 struct Nes_Noise : Nes_Envelope
 {
 	int noise;
-	Blip_Synth<blip_med_quality,15> synth;
+	Blip_Synth<blip_med_quality,1> synth;
 	
 	void run( nes_time_t, nes_time_t );
 	void reset() {
@@ -125,7 +126,7 @@ struct Nes_Dmc : Nes_Osc
 	
 	Nes_Apu* apu;
 	
-	Blip_Synth<blip_med_quality,127> synth;
+	Blip_Synth<blip_med_quality,1> synth;
 	
 	void start();
 	void write_register( int, int );
@@ -135,6 +136,7 @@ struct Nes_Dmc : Nes_Osc
 	void reload_sample();
 	void reset();
 	int count_reads( nes_time_t, nes_time_t* ) const;
+	nes_time_t next_read_time() const;
 };
 
 #endif

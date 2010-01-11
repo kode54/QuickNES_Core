@@ -1,11 +1,9 @@
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/
 
 #include "Nes_Recorder.h"
 
 #include <stdlib.h>
-#include "Nes_Vrc6.h"
-#include "Nes_Nonlinearizer.h"
 
 /* Copyright (C) 2004-2005 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
@@ -26,7 +24,6 @@ Nes_Recorder::Nes_Recorder( frame_count_t snapshot_period )
 	pixels = NULL;
 	sound_buf = NULL;
 	channel_count_ = 0;
-	nonlinearizer = NULL;
 	default_sound_buf = NULL;
 	circular_duration = 5 * 60 * frames_per_second; // default
 	movie_resync_enabled = false;
@@ -37,20 +34,22 @@ Nes_Recorder::Nes_Recorder( frame_count_t snapshot_period )
 Nes_Recorder::~Nes_Recorder()
 {
 	delete default_sound_buf;
-	delete nonlinearizer;
 }
 
 blargg_err_t Nes_Recorder::init()
 {
-	require( !film );
-	
-	frame_count_t const cache_duration = 3 * 60 * frames_per_second; // configurable
-	
-	// the +1 might reduce cache thrashing
-	BLARGG_RETURN_ERR( cache.resize( cache_duration / cache_period_ + 1 ) );
-	
-	film = &default_film;
-	BLARGG_RETURN_ERR( reapply_circularity() );
+	if ( !film )
+	{
+		BLARGG_RETURN_ERR( emu::init() );
+		
+		frame_count_t const cache_duration = 3 * 60 * frames_per_second; // configurable
+		
+		// the +1 might reduce cache thrashing
+		BLARGG_RETURN_ERR( cache.resize( cache_duration / cache_period_ + 1 ) );
+		
+		film = &default_film;
+		BLARGG_RETURN_ERR( reapply_circularity() );
+	}
 	
 	return blargg_success;
 }
@@ -74,23 +73,21 @@ blargg_err_t Nes_Recorder::reapply_circularity()
 	return blargg_success;
 }
 
-blargg_err_t Nes_Recorder::set_sample_rate_nonlinear( long rate )
-{
-	if ( ! nonlinearizer ) nonlinearizer = new Nes_Nonlinearizer;
-	BLARGG_CHECK_ALLOC( nonlinearizer );
-	return set_sample_rate( rate, nonlinearizer );
-}
-
 blargg_err_t Nes_Recorder::set_sample_rate( long rate, Multi_Buffer* new_buf )
 {
-	if ( nonlinearizer && new_buf != nonlinearizer )
+	if ( sound_buf != new_buf )
 	{
-		delete nonlinearizer;
-		nonlinearizer = NULL;
+		sound_buf = new_buf;
+		BLARGG_RETURN_ERR( emu::init() );
+		emu::get_apu().volume( 1.0 ); // cancel any previous non-linearity
 	}
-	sound_buf = new_buf;
 	BLARGG_RETURN_ERR( sound_buf->sample_rate( rate, 1000 / frames_per_second ) );
 	sound_buf->clock_rate( sound_clock_rate );
+	if ( sound_buf != default_sound_buf )
+	{
+		delete default_sound_buf;
+		default_sound_buf = NULL;
+	}
 	return blargg_success;
 }
 
@@ -111,10 +108,7 @@ void Nes_Recorder::set_equalizer( const equalizer_t& eq )
 	{
 		blip_eq_t blip_eq( eq.treble, eq.cutoff, sound_buf->sample_rate() );
 		emu::get_apu().treble_eq( blip_eq );
-		#if NES_EMU_ENABLE_VRC6
-			if ( emu::get_vrc6() )
-				emu::get_vrc6()->treble_eq( blip_eq );
-		#endif
+		emu::get_mapper().set_treble( blip_eq );
 		sound_buf->bass_freq( equalizer_.bass );
 	}
 }
@@ -122,8 +116,7 @@ void Nes_Recorder::set_equalizer( const equalizer_t& eq )
 blargg_err_t Nes_Recorder::load_ines_rom( Data_Reader& in, Data_Reader* ips )
 {
 	// auto init
-	if ( !film )
-		BLARGG_RETURN_ERR( init() );
+	BLARGG_RETURN_ERR( init() );
 	
 	// optionally patch while loading
 	if ( ips )
@@ -134,19 +127,7 @@ blargg_err_t Nes_Recorder::load_ines_rom( Data_Reader& in, Data_Reader* ips )
 	BLARGG_RETURN_ERR( emu::open_rom( &rom ) );
 	
 	// assign sound channels
-	channel_count_ = emu::get_apu().osc_count;
-	double gain = 1.0;
-	if ( emu::get_vrc6() )
-	{
-		channel_count_ += emu::get_vrc6()->osc_count;
-		if ( !nonlinearizer )
-			gain = 0.75;
-		emu::get_vrc6()->volume( gain );
-	}
-	if ( !nonlinearizer )
-		emu::get_apu().volume( gain );
-	else
-		emu::get_apu().volume( 1.0, true );
+	channel_count_ = emu::get_apu().osc_count + emu::get_mapper().channel_count();
 	
 	BLARGG_RETURN_ERR( sound_buf->set_channel_count( channel_count() ) );
 	set_equalizer( equalizer_ );
@@ -170,34 +151,33 @@ void Nes_Recorder::enable_sound( bool enabled, int index )
 	{
 		require( (unsigned) index < channel_count() );
 		
-		if ( (unsigned) index < emu::get_apu().osc_count )
-		{
-			emu::get_apu().osc_output( index, enabled ? sound_buf->channel( index ).center : NULL );
-		}
-		#if NES_EMU_ENABLE_VRC6
-			else if ( emu::get_vrc6() )
-			{
-					int vrc_index = index - emu::get_apu().osc_count;
-					if ( (unsigned) vrc_index < emu::get_vrc6()->osc_count )
-						emu::get_vrc6()->osc_output( vrc_index,
-								enabled ? sound_buf->channel( index ).center : NULL );
-			}
-		#endif
+		Blip_Buffer* buf = (enabled ? sound_buf->channel( index ).center : NULL);
+		int mapper_index = index - emu::get_apu().osc_count;
+		if ( mapper_index < 0 )
+			emu::get_apu().osc_output( index, buf );
+		else
+			emu::get_mapper().set_channel_buf( mapper_index, buf );
 	}
+}
+
+void Nes_Recorder::clear_sound_buf()
+{
+	sound_buf_end = 0;
+	sound_buf->clear();
+	emu::get_apu().buffer_cleared();
+	fade_sound_out = false;
+	fade_sound_in = true;
 }
 
 void Nes_Recorder::reset( bool full_reset, bool erase_battery_ram )
 {
 	require( rom.loaded() );
 	
-	fade_sound_in = false;
-	fade_sound_out = false;
 	skip_next_frame = false;
-	sound_buf_end = 0;
-	sound_buf->clear();
-	
+	clear_sound_buf();
 	clear_cache();
 	
+	emu::set_timestamp( 0 );
 	emu::reset( full_reset, erase_battery_ram );
 	film->clear();
 }
@@ -217,8 +197,7 @@ void Nes_Recorder::set_film( Nes_Film* new_film, frame_count_t time )
 	if ( !new_film )
 	{
 		new_film = &default_film;
-		if ( film != new_film )
-			default_film.clear();
+		default_film.clear();
 	}
 	else if ( new_film != &default_film )
 	{
@@ -312,8 +291,6 @@ void Nes_Recorder::quick_seek( frame_count_t time )
 			before = ss->timestamp();
 		}
 		
-		//dprintf( "Quick seek before: %d, after: %d\n", (int) before, (int) after );
-		
 		// deterime which is closer
 		frame_count_t closest = after;
 		if ( time - before < after - time )
@@ -321,10 +298,7 @@ void Nes_Recorder::quick_seek( frame_count_t time )
 		
 		// use if close enough
 		if ( abs( time - closest ) < half_threshold )
-		{
-			//dprintf( "Quick seek adjusted by %d frames\n", closest - time );
 			time = closest;
-		}
 	}
 	seek( time );
 }
@@ -396,7 +370,7 @@ long Nes_Recorder::read_samples( short* out, long out_size )
 void Nes_Recorder::load_snapshot_( Nes_Snapshot const& ss )
 {
 	skip_next_frame = false;
-	sound_buf->clear(); // to do: optimize this
+	clear_sound_buf(); // to do: optimize this
 	return emu::load_snapshot( ss );
 }
 
@@ -411,16 +385,11 @@ void Nes_Recorder::emulate_frame_( joypad_t joypad, bool playing, bool rendering
 	// add snapshot to movie if there is none for this timestamp and it's aligned
 	Nes_Snapshot& ss = film->get_snapshot( emu::timestamp() );
 	if ( ss.timestamp() == invalid_frame_count && emu::timestamp() % film->period() == 0 )
-	{
 		emu::save_snapshot( &ss );
-		//dprintf( "Added snapshot to movie for timestamp %d\n", (int) emu::timestamp() );
-	}
 	
+	// update cache
 	if ( emu::timestamp() % cache_period_ == 0 )
-	{
 		save_snapshot( &cache [cache_index( emu::timestamp() )] );
-		//dprintf( "Added snapshot to cache for timestamp %d\n", (int) emu::timestamp() );
-	}
 	
 	if ( playing && skip_next_frame )
 	{
@@ -430,35 +399,38 @@ void Nes_Recorder::emulate_frame_( joypad_t joypad, bool playing, bool rendering
 	}
 	else
 	{
+		skip_next_frame = false;
+		
 		bool joypad_needed = (joypad & 0xff) != 0xff;
 		
 		if ( joypad_needed || !film->has_joypad_sync() )
 			last_joypad = joypad;
 		else if ( film->contains_frame( emu::timestamp() + 1 ) )
+		{
 			last_joypad = film->get_joypad( emu::timestamp() + 1 );
+			if ( (last_joypad & 0xff) == 0xff )
+				last_joypad = 0;
+		}
 		
 		frames_emulated_ = 1;
 		sound_buf_end = emu::emulate_frame( last_joypad & 0xff, (last_joypad >> 8) & 0xff );
 		emu::set_pixels( NULL, 0 );
 		
-		if ( playing && film->has_joypad_sync() && joypad_needed != emu::were_joypads_read() )
+		bool joypads_read = (emu::joypad_read_count() != 0);
+		if ( playing && film->has_joypad_sync() && joypad_needed != joypads_read )
 		{
-			if ( emu::were_joypads_read() )
+			check( false ); // resync should be very rare, so make note when it occurs
+			
+			skip_next_frame = joypads_read;
+			if ( !skip_next_frame )
 			{
-				skip_next_frame = true;
-				dprintf( "%d frame doubled to sync joypad\n", emu::timestamp() );
-			}
-			else
-			{
-				dprintf( "%d frame skipped to sync joypad\n", emu::timestamp() );
 				if ( rendering )
-					sound_buf->clear();
+					clear_sound_buf();
 				
 				frames_emulated_ = 2;
 				sound_buf_end = emu::emulate_frame( last_joypad & 0xff, (last_joypad >> 8) & 0xff );
 				
-				if ( !emu::were_joypads_read() )
-					dprintf( "Joypads still weren't read after emulating an extra frame\n" );
+				check( emu::joypad_read_count() );
 				
 				emu::set_timestamp( emu::timestamp() - 1 );
 			}
@@ -475,7 +447,7 @@ void Nes_Recorder::render_frame_( joypad_t joypad, bool playing )
 		emu::set_pixels( pixels, row_bytes );
 	
 	if ( sound_buf_end )
-		sound_buf->clear(); // most recently skipped frames so buffer contains garbage
+		clear_sound_buf(); // most recently skipped frames so buffer contains garbage
 	
 	emulate_frame_( joypad, playing, true );
 	sound_buf->end_frame( sound_buf_end, false );
@@ -493,7 +465,6 @@ void Nes_Recorder::play_frame_()
 		{
 			fade_sound_out = true;
 			load_snapshot_( ss );
-			//dprintf( "Synchronized with movie at timestamp %d\n", (int) emu::timestamp() );
 		}
 	}
 }
@@ -551,7 +522,7 @@ void Nes_Recorder::seek( frame_count_t time )
 
 blargg_err_t Nes_Recorder::next_frame( int joypad, int joypad2 )
 {
-	if ( !film->empty() && film->contains_frame( tell() ) )
+	if ( film->contains_frame( tell() ) )
 	{
 		// playing
 		play_frame_();
@@ -579,7 +550,7 @@ blargg_err_t Nes_Recorder::next_frame( int joypad, int joypad2 )
 		render_frame_( joypads, false );
 		
 		// if joypad wasn't even read this frame, mark that in movie with the value 0xff
-		if ( film->has_joypad_sync() && !emu::were_joypads_read() )
+		if ( film->has_joypad_sync() && !emu::joypad_read_count() )
 			BLARGG_RETURN_ERR( film->record_frame( time, 0xff ) );
 	}
 	

@@ -1,11 +1,13 @@
 
 // NES block-oriented file access
 
-// Nes_Emu 0.5.0. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.5.6. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
 
 #ifndef NES_FILE_H
 #define NES_FILE_H
 
+#include "blargg_common.h"
+#include "abstract_file.h"
 #include "nes_state.h"
 
 class Nes_File_Writer : public Data_Writer {

@@ -121,11 +121,6 @@ public:
 	virtual error_t write( const void*, long n ) = 0;
 };
 
-class Null_Writer : public Data_Writer {
-public:
-	error_t write( const void*, long );
-};
-
 class Std_File_Writer : public Data_Writer {
 	FILE* file_;
 protected:
@@ -146,18 +141,35 @@ public:
 	void close();
 };
 
-// to do: mem file writer
-
-// Write to block of memory
+// Write data to memory
 class Mem_Writer : public Data_Writer {
-	void* out;
-	long remain_;
-	int ignore_excess;
+	char* data_;
+	long size_;
+	long allocated;
+	enum { expanding, fixed, ignore_excess } mode;
 public:
-	// to do: automatic allocation and expansion of memory?
-	Mem_Writer( void*, long size, int ignore_excess = 1 );
+	// Keep all written data in expanding block of memory
+	Mem_Writer();
+	
+	// Write to fixed-size block of memory. If ignore_excess is false, returns
+	// error if more than 'size' data is written, otherwise ignores any excess.
+	Mem_Writer( void*, long size, int ignore_excess = 0 );
+	
 	error_t write( const void*, long );
-	long remain() const;
+	
+	// Pointer to beginning of written data
+	char* data() { return data_; }
+	
+	// Number of bytes written
+	long size() const { return size_; }
+	
+	~Mem_Writer();
+};
+
+// Written data is ignored
+class Null_Writer : public Data_Writer {
+public:
+	error_t write( const void*, long );
 };
 
 #endif

@@ -2,7 +2,7 @@
 // Buffer of sound samples into which band-limited waveforms can be synthesized
 // using Blip_Wave or Blip_Synth.
 
-// Blip_Buffer 0.3.3. Copyright (C) 2003-2005 Shay Green. GNU LGPL license.
+// Blip_Buffer 0.3.4. Copyright (C) 2003-2005 Shay Green. GNU LGPL license.
 
 #ifndef BLIP_BUFFER_H
 #define BLIP_BUFFER_H
@@ -19,6 +19,8 @@ typedef BOOST::int16_t blip_sample_t;
 
 // Make buffer as large as possible (currently about 65000 samples)
 const int blip_default_length = 0;
+
+typedef unsigned long blip_resampled_time_t; // not documented
 
 class Blip_Buffer {
 public:
@@ -71,8 +73,7 @@ public:
 	// Number of samples delay from synthesis to samples read out
 	int output_latency() const;
 	
-	
-	// Experimental external buffer mixing support
+// Beta features
 	
 	// Number of raw samples that can be mixed within frame of specified duration
 	long count_samples( blip_time_t duration ) const;
@@ -80,19 +81,26 @@ public:
 	// Mix 'count' samples from 'buf' into buffer.
 	void mix_samples( const blip_sample_t* buf, long count );
 	
+	// Count number of clocks needed until 'count' samples will be available.
+	// If buffer can't even hold 'count' samples, returns number of clocks until
+	// buffer is full.
+	blip_time_t count_clocks( long count ) const;
+	
 	
 	// not documented yet
 	
 	void remove_silence( long count );
 	
-	typedef unsigned long resampled_time_t;
-	
-	resampled_time_t resampled_time( blip_time_t t ) const {
-		return t * resampled_time_t (factor_) + offset_;
+	blip_resampled_time_t resampled_time( blip_time_t t ) const
+	{
+		return t * blip_resampled_time_t (factor_) + offset_;
 	}
 	
-	resampled_time_t resampled_duration( int t ) const {
-		return t * resampled_time_t (factor_);
+	blip_resampled_time_t clock_rate_factor( long clock_rate ) const;
+	
+	blip_resampled_time_t resampled_duration( int t ) const
+	{
+		return t * blip_resampled_time_t (factor_);
 	}
 	
 private:
@@ -102,11 +110,12 @@ private:
 
 	// Don't use the following members. They are public only for technical reasons.
 	public:
+		enum { sample_offset_ = 0x7F7F }; // repeated byte allows memset to clear buffer
 		enum { widest_impulse_ = 24 };
 		typedef BOOST::uint16_t buf_t_;
 		
 		unsigned long factor_;
-		resampled_time_t offset_;
+		blip_resampled_time_t offset_;
 		buf_t_* buffer_;
 		unsigned buffer_size_;
 	private:
@@ -118,7 +127,6 @@ private:
 		int length_;
 		
 		enum { accum_fract = 15 }; // less than 16 to give extra sample range
-		enum { sample_offset = 0x7F7F }; // repeated byte allows memset to clear buffer
 		
 		friend class Blip_Reader;
 };
@@ -157,7 +165,7 @@ public:
 	
 	void next( int bass_shift = 9 ) {
 		accum -= accum >> bass_shift;
-		accum += ((long) *buf++ - Blip_Buffer::sample_offset) << Blip_Buffer::accum_fract;
+		accum += ((long) *buf++ - Blip_Buffer::sample_offset_) << Blip_Buffer::accum_fract;
 	}
 	
 	void end( Blip_Buffer& blip_buf ) {
@@ -229,7 +237,7 @@ inline void Blip_Buffer::end_frame( blip_time_t t ) {
 inline void Blip_Buffer::remove_silence( long count ) {
 	assert(( "Blip_Buffer::remove_silence(): Tried to remove more samples than available",
 			count <= samples_avail() ));
-	offset_ -= resampled_time_t (count) << BLIP_BUFFER_ACCURACY;
+	offset_ -= blip_resampled_time_t (count) << BLIP_BUFFER_ACCURACY;
 }
 
 inline int Blip_Buffer::output_latency() const {
@@ -240,8 +248,11 @@ inline long Blip_Buffer::clock_rate() const {
 	return clocks_per_sec;
 }
 
-// MSVC6 fix
-typedef Blip_Buffer::resampled_time_t blip_resampled_time_t;
+inline void Blip_Buffer::clock_rate( long cps )
+{
+	clocks_per_sec = cps;
+	factor_ = clock_rate_factor( cps );
+}
 
 #include "Blip_Synth.h"
 

@@ -1,5 +1,5 @@
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/nes-emu/
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/nes-emu/
 
 #include "Nes_Cpu.h"
 
@@ -19,14 +19,23 @@ more details. You should have received a copy of the GNU Lesser General
 Public License along with this module; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
-// to do: merge with Nes_Cpu from NSF player
-
 #include BLARGG_SOURCE_BEGIN
 
 Nes_Cpu::Nes_Cpu()
 {
 	callback_data = NULL;
-	reset( NULL, NULL, NULL );
+	reset();
+}
+
+#if BLARGG_NONPORTABLE
+	#define PAGE_OFFSET( addr ) (addr)
+#else
+	#define PAGE_OFFSET( addr ) ((addr) & (page_size - 1))
+#endif
+
+inline void Nes_Cpu::set_code_page( int i, uint8_t const* p )
+{
+	code_map [i] = p - PAGE_OFFSET( i * page_size );
 }
 
 void Nes_Cpu::reset( const void* unmapped_code_page, reader_t read, writer_t write )
@@ -40,13 +49,11 @@ void Nes_Cpu::reset( const void* unmapped_code_page, reader_t read, writer_t wri
 	
 	clock_count = 0;
 	base_time = 0;
-	#if NES_CPU_IRQ_SUPPORT
-		clock_limit = 0;
-	#endif
+	clock_limit = 0;
 	
 	for ( int i = 0; i < page_count + 1; i++ )
 	{
-		code_map [i] = (uint8_t*) unmapped_code_page;
+		set_code_page( i, (uint8_t*) unmapped_code_page );
 		data_reader [i] = read;
 		data_writer [i] = write;
 	}
@@ -57,74 +64,53 @@ void Nes_Cpu::map_code( nes_addr_t start, unsigned long size, const void* data )
 	// address range must begin and end on page boundaries
 	require( start % page_size == 0 );
 	require( size % page_size == 0 );
+	require( start + size <= 0x10000 );
 	
 	unsigned first_page = start / page_size;
 	for ( unsigned i = size / page_size; i--; )
-		code_map [first_page + i] = (uint8_t*) data + i * page_size;
+		set_code_page( first_page + i, (uint8_t*) data + i * page_size );
 }
 
-void Nes_Cpu::map_memory( nes_addr_t start, unsigned long size, reader_t read, writer_t write )
+void Nes_Cpu::set_reader( nes_addr_t start, unsigned long size, reader_t func )
 {
 	// address range must begin and end on page boundaries
 	require( start % page_size == 0 );
 	require( size % page_size == 0 );
+	require( start + size <= 0x10000 );
 	
 	unsigned first_page = start / page_size;
 	for ( unsigned i = size / page_size; i--; )
-	{
-		data_reader [first_page + i] = read;
-		data_writer [first_page + i] = write;
-	}
+		data_reader [first_page + i] = func;
+}
+
+void Nes_Cpu::set_writer( nes_addr_t start, unsigned long size, writer_t func )
+{
+	// address range must begin and end on page boundaries
+	require( start % page_size == 0 );
+	require( size % page_size == 0 );
+	require( start + size <= 0x10000 );
+	
+	unsigned first_page = start / page_size;
+	for ( unsigned i = size / page_size; i--; )
+		data_writer [first_page + i] = func;
 }
 
 // Note: 'addr' is evaulated more than once in the following macros, so it
 // must not contain side-effects.
-#define READ( addr )            (data_reader [(addr) >> page_bits]( callback_data, addr ))
-#define WRITE( addr, value )    (data_writer [(addr) >> page_bits]( callback_data, addr, value ))
 
-#if NES_CPU_NO_DIRECT_MEM
-	#define READ_LOW                READ
-	#define WRITE_LOW               WRITE
-#else
-	#define READ_LOW( addr )        (low_mem [int (addr)])
-	#define WRITE_LOW( addr, data ) void (READ_LOW( addr ) = (data))
-#endif
+#define READ( addr )        (data_reader [(addr) >> page_bits]( callback_data, addr ))
+#define WRITE( addr, data ) (data_writer [(addr) >> page_bits]( callback_data, addr, data ))
 
-#if NES_CPU_NO_DIRECT_MEM
-	#define READ_PROG           READ
-	#define READ_PROG16( addr ) (READ_PROG( addr ) | (READ_PROG( (addr) + 1 ) << 8))
-#else
-	#define READ_PROG( addr )   (code_map [(addr) >> page_bits] [(addr) & (page_size - 1)])
-	#define READ_PROG16( addr ) GET_LE16( &READ_PROG( addr ) )
-#endif
+#define READ_LOW( addr )        (low_mem [int (addr)])
+#define WRITE_LOW( addr, data ) void (READ_LOW( addr ) = (data))
 
-#if NES_CPU_NO_DIRECT_MEM
-	typedef int sp_t;
-	
-	#define SET_SP( v )     void (sp = (v))
-	#define GET_SP()        (sp)
+#define READ_PROG( addr )   (code_map [(addr) >> page_bits] [PAGE_OFFSET( addr )])
+#define READ_PROG16( addr ) GET_LE16( &READ_PROG( addr ) )
 
-	#define PUSH( v )       (void) (WRITE( sp + 0x100, v ), sp--)
-	#define POP()           (sp++, READ( sp + 0x100 ))
-#elif NES_CPU_MASK_SP
-	typedef int sp_t;
-	
-	#define SET_SP( v )     (sp = (v))
-	#define GET_SP()        (sp + 0)
+#define SET_SP( v )     (sp = ((v) + 1) | 0x100)
+#define GET_SP()        ((sp - 1) & 0xff)
 
-	#define PUSH( v )       (low_mem [0x100 + sp] = (v), void (sp = (sp - 1) & 0xff))
-	#define POP()           (sp = (sp + 1) & 0xff, low_mem [0x100 + sp] + 0)
-#else
-	typedef BOOST::uint8_t* sp_t;
-	
-	// stack pointer is kept one greater than usual 6502 stack pointer
-	#define SET_SP( v )     (sp = low_mem + 0x101 + (v))
-	#define GET_SP()        (sp - 0x101 - low_mem)
-
-	#define PUSH( v )       (*--sp = v)
-	#define POP()           (*sp++)
-
-#endif
+#define PUSH( v )       ((sp = (sp - 1) | 0x100), WRITE_LOW( sp, v ))
 
 int Nes_Cpu::read( nes_addr_t addr )
 {
@@ -138,44 +124,33 @@ void Nes_Cpu::write( nes_addr_t addr, int value )
 
 #ifndef NES_CPU_GLUE_ONLY
 
-static const unsigned char clock_table [256] = {                             
-	7,6,2,8,3,3,5,5,3,2,2,2,4,4,6,6,
-	2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,
-	6,6,2,8,3,3,5,5,4,2,2,2,4,4,6,6,
-	2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,
-	6,6,2,8,3,3,5,5,3,2,2,2,3,4,6,6,
-	2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,
-	6,6,2,8,3,3,5,5,4,2,2,2,5,4,6,6,
-	2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,
-	2,6,2,6,3,3,3,3,2,2,2,2,4,4,4,4,
-	2,6,2,6,4,4,4,4,2,5,2,5,5,5,5,5,
-	2,6,2,6,3,3,3,3,2,2,2,2,4,4,4,4,
-	2,5,2,5,4,4,4,4,2,4,2,4,4,4,4,4,
-	2,6,2,8,3,3,5,5,2,2,2,2,4,4,6,6,
-	2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,
-	2,6,3,8,3,3,5,5,2,2,2,2,4,4,6,6,
-	2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7
+static const unsigned char clock_table [256] = {
+//  0 1 2 3 4 5 6 7 8 9 A B C D E F
+	7,6,2,8,3,3,5,5,3,2,2,2,4,4,6,6,// 0
+	3,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,// 1
+	6,6,2,8,3,3,5,5,4,2,2,2,4,4,6,6,// 2
+	3,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,// 3
+	6,6,2,8,3,3,5,5,3,2,2,2,3,4,6,6,// 4
+	3,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,// 5
+	6,6,2,8,3,3,5,5,4,2,2,2,5,4,6,6,// 6
+	3,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,// 7
+	2,6,2,6,3,3,3,3,2,2,2,2,4,4,4,4,// 8
+	3,6,2,6,4,4,4,4,2,5,2,5,5,5,5,5,// 9
+	2,6,2,6,3,3,3,3,2,2,2,2,4,4,4,4,// A
+	3,5,2,5,4,4,4,4,2,4,2,4,4,4,4,4,// B
+	2,6,2,8,3,3,5,5,2,2,2,2,4,4,6,6,// C
+	3,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,// D
+	2,6,3,8,3,3,5,5,2,2,2,2,4,4,6,6,// E
+	3,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7 // F
 };
 
 #include BLARGG_ENABLE_OPTIMIZER
 
-// on machines with relatively few registers:
-// use local temporaries (if no function calls) over all other variables
-// these are most likely to be in registers, so use them over others if possible:
-// pc
-// nz (so calculate with nz first, then assign to other variable if necessary)
-// data
-// this
 Nes_Cpu::result_t Nes_Cpu::run( nes_time_t end )
 {
-	#if NES_CPU_IRQ_SUPPORT
-		end_time( end );
-	#else
-		clock_count -= (end - base_time);
-		base_time = end;
-	#endif
+	end_time( end );
 	
-	result_t result = result_cycles;
+	volatile result_t result = result_cycles;
 	
 #if BLARGG_CPU_POWERPC
 	// cache commonly-used values in registers
@@ -187,15 +162,13 @@ Nes_Cpu::result_t Nes_Cpu::run( nes_time_t end )
 	
 	// registers
 	unsigned pc = r.pc;
-	sp_t sp;
+	int sp;
 	SET_SP( r.sp );
 	int a = r.a;
 	int x = r.x;
 	int y = r.y;
 	
 	// status flags
-	
-	#define IS_NEG (int ((nz + 0x800) | (nz << (CHAR_BIT * sizeof (int) - 8))) < 0)
 	
 	const int st_n = 0x80;
 	const int st_v = 0x40;
@@ -206,47 +179,39 @@ Nes_Cpu::result_t Nes_Cpu::run( nes_time_t end )
 	const int st_z = 0x02;
 	const int st_c = 0x01;
 	
-	#define CALC_STATUS( out ) do {                 \
-		out = status & ~(st_n | st_z | st_c);       \
-		out |= (c >> 8) & st_c;                     \
-		if ( IS_NEG ) out |= st_n;                  \
-		if ( (nz & 0xFF) == 0 ) out |= st_z;        \
-	} while ( false )       
+	#define IS_NEG (nz & 0x880)
+	
+	#define CALC_STATUS( out ) do {             \
+		out = status & (st_v | st_d | st_i);    \
+		out |= (c >> 8) & st_c;                 \
+		if ( IS_NEG ) out |= st_n;              \
+		if ( !(nz & 0xFF)) out |= st_z;         \
+	} while ( false )
 
-	#define SET_STATUS( in ) do {                           \
-		status = in & ~(st_n | st_z | st_c | st_b | st_r);  \
-		c = in << 8;                                        \
-		nz = in << 4;                                       \
-		nz &= 0x820;                                        \
-		nz ^= ~0xDF;                                        \
+	#define SET_STATUS( in ) do {               \
+		status = in & (st_v | st_d | st_i);     \
+		c = in << 8;                            \
+		nz = (in << 4) & 0x800;                 \
+		nz |= ~in & st_z;                       \
 	} while ( false )
 	
-	uint8_t status;
-	int c;  // store C as 'c' & 0x100.
-	int nz; // store Z as 'nz' & 0xFF == 0. see above for encoding of N.
+	int status;
+	int c;  // carry set if (c & 0x100) != 0
+	int nz; // Z set if (nz & 0xff) == 0, N set if (nz & 0x880) != 0
 	{
 		int temp = r.status;
 		SET_STATUS( temp );
 	}
-
+	
 	goto loop;
-	
-	unsigned data;
-	
-branch_taken: {
-	unsigned old_pc = pc;
-	pc += (BOOST::int8_t) data;
-	#ifndef NES_CPU_FIXED_CYCLES
-		clock_count += 1 + (((old_pc ^ (pc + 1)) >> 8) & 1);
-	#endif
-}
-inc_pc_loop:            
-	pc++;
+dec_clock_loop:
+	clock_count--;
 loop:
 	
-	// to do: handle pc wrap-around? can be mostly handled by trapping
+	// to do: Handle pc wrap-around? Can be mostly handled by trapping
 	// access to unmapped page at 0x10000; the only case this doesn't
 	// handle is when a multi-byte instruction crosses the boundary.
+	// So far haven't encountered anything that actually wraps the PC.
 	check( unsigned (pc) < 0x10000 );
 	
 	check( unsigned (GET_SP()) < 0x100 );
@@ -254,45 +219,19 @@ loop:
 	assert( unsigned (x) < 0x100 );
 	assert( unsigned (y) < 0x100 );
 	
-	const nes_time_t clock_limit = this->clock_limit;
+	uint8_t const* page = code_map [pc >> page_bits];
+	unsigned opcode = page [PAGE_OFFSET( pc )];
+	unsigned data = page [PAGE_OFFSET( pc ) + 1];
+	pc++;
 	
-	// Read opcode and first operand. Optimize if processor's byte order is known
-	// and non-portable constructs are allowed.
-#if BLARGG_NONPORTABLE && !NES_CPU_NO_DIRECT_MEM && BLARGG_BIG_ENDIAN
-	data = *(BOOST::uint16_t*) &READ_PROG( pc );
-	pc++;
-	unsigned opcode = data >> 8;
-	data = (uint8_t) data;
-
-#elif BLARGG_NONPORTABLE && !NES_CPU_NO_DIRECT_MEM && BLARGG_LITTLE_ENDIAN
-	data = *(BOOST::uint16_t*) &READ_PROG( pc );
-	pc++;
-	unsigned opcode = (uint8_t) data;
-	data >>= 8;
-
-#else
-	unsigned opcode = READ_PROG( pc );
-	pc++;
-	data = READ_PROG( pc );
-	
-#endif
+	check( opcode == 0x60 || &READ_PROG( pc ) == &page [PAGE_OFFSET( pc )] );
 	
 	if ( clock_count >= clock_limit )
 		goto stop;
 	
-	#ifdef NES_CPU_FIXED_CYCLES
-		clock_count += NES_CPU_FIXED_CYCLES;
-	#else
-		clock_count += clock_table [opcode];
-	#endif
-	
+	clock_count += clock_table [opcode];
 	#if BLARGG_CPU_POWERPC
 		this->clock_count = clock_count;
-	#endif
-	
-	// hook for gathering opcode usage statistics
-	#ifdef NES_CPU_OPCODE_HOOK
-		NES_CPU_OPCODE_HOOK( opcode )
 	#endif
 	
 	switch ( opcode )
@@ -303,15 +242,9 @@ loop:
 #define ADD_PAGE        (pc++, data += 0x100 * READ_PROG( pc ));
 #define GET_ADDR()      READ_PROG16( pc )
 
-#ifdef NES_CPU_FIXED_CYCLES
-	#define HANDLE_PAGE_CROSSING( lsb )
-#else
-	#define HANDLE_PAGE_CROSSING( lsb ) clock_count += (lsb) >> 8;
-#endif
+#define HANDLE_PAGE_CROSSING( lsb ) clock_count += (lsb) >> 8;
 
-#define INC_DEC_XY( reg, n )        \
-	reg = uint8_t (nz = reg + n);   \
-	goto loop;
+#define INC_DEC_XY( reg, n ) reg = uint8_t (nz = reg + n); goto loop;
 
 #define IND_Y {                                                 \
 		int temp = READ_LOW( data ) + y;                        \
@@ -351,9 +284,15 @@ case op + 0x04: /* imm */               \
 imm##op:                                \
 
 #define BRANCH( cond )      \
-	if ( cond )             \
-		goto branch_taken;  \
-	goto inc_pc_loop;
+{                           \
+	pc++;                   \
+	int offset = (BOOST::int8_t) data;  \
+	int extra_clock = (pc & 0xff) + offset; \
+	if ( !(cond) ) goto dec_clock_loop; \
+	pc += offset;       \
+	clock_count += (extra_clock >> 8) & 1;  \
+	goto loop;          \
+}
 
 // Often-Used
 
@@ -361,21 +300,23 @@ imm##op:                                \
 		data = uint8_t (data + x);
 	case 0xA5: // LDA zp
 		a = nz = READ_LOW( data );
-		goto inc_pc_loop;
+		pc++;
+		goto loop;
 	
 	case 0xD0: // BNE
 		BRANCH( (uint8_t) nz );
 	
-	case 0x4C: // JMP abs
-		pc++;
-		goto jmp_common;
+	case 0x20: { // JSR
+		int temp = pc + 1;
+		pc = READ_PROG16( pc );
+		WRITE_LOW( 0x100 | (sp - 1), temp >> 8 );
+		sp = (sp - 2) | 0x100;
+		WRITE_LOW( sp, temp );
+		goto loop;
+	}
 	
-	case 0x20: // JSR
-		pc++;
-		PUSH( pc >> 8 );
-		PUSH( pc );
-	jmp_common:
-		pc = data + 0x100 * READ_PROG( pc );
+	case 0x4C: // JMP abs
+		pc = READ_PROG16( pc );
 		goto loop;
 	
 	case 0xE8: INC_DEC_XY( x, 1 )  // INX
@@ -385,8 +326,10 @@ imm##op:                                \
 	
 	ARITH_ADDR_MODES( 0xC5 ) // CMP
 		nz = a - data;
+		pc++;
 		c = ~nz;
-		goto inc_pc_loop;
+		nz &= 0xff;
+		goto loop;
 	
 	case 0x30: // BMI
 		BRANCH( IS_NEG )
@@ -397,8 +340,9 @@ imm##op:                                \
 	case 0x95: // STA zp,x
 		data = uint8_t (data + x);
 	case 0x85: // STA zp
+		pc++;
 		WRITE_LOW( data, a );
-		goto inc_pc_loop;
+		goto loop;
 	
 	case 0xC8: INC_DEC_XY( y, 1 )  // INY
 
@@ -408,6 +352,10 @@ imm##op:                                \
 		a = nz = y;
 		goto loop;
 	
+	case 0xB9: // LDA abs,Y
+		data += y;
+		goto lda_ind_common;
+	
 	case 0xBD: // LDA abs,X
 		data += x;
 	lda_ind_common:
@@ -415,14 +363,20 @@ imm##op:                                \
 	case 0xAD: // LDA abs
 		ADD_PAGE
 	lda_ptr:
-		nz = a = READ( data );
-		goto inc_pc_loop;
-
+		a = nz = READ( data );
+		pc++;
+		goto loop;
+	
 	case 0x60: // RTS
-		pc = POP();
-		pc += 0x100 * POP();
-		goto inc_pc_loop;
+		pc = 1 + READ_LOW( sp );
+		pc += READ_LOW( 0x100 | (sp - 0xff) ) * 0x100;
+		sp = (sp - 0xfe) | 0x100;
+		goto loop;
 
+	case 0x99: // STA abs,Y
+		data += y;
+		goto sta_ind_common;
+	
 	case 0x9D: // STA abs,X
 		data += x;
 	sta_ind_common:
@@ -430,12 +384,15 @@ imm##op:                                \
 	case 0x8D: // STA abs
 		ADD_PAGE
 	sta_ptr:
+		pc++;
 		WRITE( data, a );
-		goto inc_pc_loop;
+		goto loop;
 	
 	case 0xA9: // LDA #imm
-		a = nz = data;
-		goto inc_pc_loop;
+		pc++;
+		a = data;
+		nz = data;
+		goto loop;
 
 // Branch
 
@@ -456,32 +413,36 @@ imm##op:                                \
 	case 0x94: // STY zp,x
 		data = uint8_t (data + x);
 	case 0x84: // STY zp
+		pc++;
 		WRITE_LOW( data, y );
-		goto inc_pc_loop;
+		goto loop;
 	
 	case 0x96: // STX zp,y
 		data = uint8_t (data + y);
 	case 0x86: // STX zp
+		pc++;
 		WRITE_LOW( data, x );
-		goto inc_pc_loop;
+		goto loop;
 	
 	case 0xB6: // LDX zp,y
 		data = uint8_t (data + y);
 	case 0xA6: // LDX zp
 		data = READ_LOW( data );
-	case 0xA2: // LDX imm
+	case 0xA2: // LDX #imm
+		pc++;
 		x = data;
 		nz = data;
-		goto inc_pc_loop;
+		goto loop;
 	
 	case 0xB4: // LDY zp,x
 		data = uint8_t (data + x);
 	case 0xA4: // LDY zp
 		data = READ_LOW( data );
-	case 0xA0: // LDY imm
+	case 0xA0: // LDY #imm
+		pc++;
 		y = data;
 		nz = data;
-		goto inc_pc_loop;
+		goto loop;
 	
 	case 0xB1: // LDA (ind),Y
 		IND_Y
@@ -491,10 +452,6 @@ imm##op:                                \
 		IND_X
 		goto lda_ptr;
 	
-	case 0xB9: // LDA abs,Y
-		data += y;
-		goto lda_ind_common;
-	
 	case 0x91: // STA (ind),Y
 		IND_Y
 		goto sta_ptr;
@@ -503,18 +460,15 @@ imm##op:                                \
 		IND_X
 		goto sta_ptr;
 	
-	case 0x99: // STA abs,Y
-		data += y;
-		goto sta_ind_common;
-	
 	case 0xBC: // LDY abs,X
 		data += x;
 		HANDLE_PAGE_CROSSING( data );
 	case 0xAC:{// LDY abs
 		pc++;
 		unsigned addr = data + 0x100 * READ_PROG( pc );
+		pc++;
 		y = nz = READ( addr );
-		goto inc_pc_loop;
+		goto loop;
 	}
 	
 	case 0xBE: // LDX abs,y
@@ -523,8 +477,9 @@ imm##op:                                \
 	case 0xAE:{// LDX abs
 		pc++;
 		unsigned addr = data + 0x100 * READ_PROG( pc );
+		pc++;
 		x = nz = READ( addr );
-		goto inc_pc_loop;
+		goto loop;
 	}
 	
 	{
@@ -536,7 +491,7 @@ imm##op:                                \
 	case 0x8E: // STX abs
 		temp = x;
 	store_abs:
-		int addr = GET_ADDR();
+		unsigned addr = GET_ADDR();
 		WRITE( addr, temp );
 		pc += 2;
 		goto loop;
@@ -553,11 +508,13 @@ imm##op:                                \
 	
 	case 0xE4: // CPX zp
 		data = READ_LOW( data );
-	case 0xE0: // CPX imm
+	case 0xE0: // CPX #imm
 	cpx_data:
 		nz = x - data;
+		pc++;
 		c = ~nz;
-		goto inc_pc_loop;
+		nz &= 0xff;
+		goto loop;
 	
 	case 0xCC:{// CPY abs
 		unsigned addr = GET_ADDR();
@@ -568,25 +525,30 @@ imm##op:                                \
 	
 	case 0xC4: // CPY zp
 		data = READ_LOW( data );
-	case 0xC0: // CPY imm
+	case 0xC0: // CPY #imm
 	cpy_data:
 		nz = y - data;
+		pc++;
 		c = ~nz;
-		goto inc_pc_loop;
+		nz &= 0xff;
+		goto loop;
 	
 // Logical
 
 	ARITH_ADDR_MODES( 0x25 ) // AND
 		nz = (a &= data);
-		goto inc_pc_loop;
+		pc++;
+		goto loop;
 	
 	ARITH_ADDR_MODES( 0x45 ) // EOR
 		nz = (a ^= data);
-		goto inc_pc_loop;
+		pc++;
+		goto loop;
 	
 	ARITH_ADDR_MODES( 0x05 ) // ORA
 		nz = (a |= data);
-		goto inc_pc_loop;
+		pc++;
+		goto loop;
 	
 	case 0x2C:{// BIT abs
 		unsigned addr = GET_ADDR();
@@ -598,10 +560,13 @@ imm##op:                                \
 	case 0x24: // BIT zp
 		nz = READ_LOW( data );
 	bit_common:
-		status = (status & ~st_v) | (nz & st_v);
-		if ( !(a & nz) ) // use special encoding since N and Z might both be set
-			nz = ((nz & 0x80) << 4) ^ ~0xFF;
-		goto inc_pc_loop;
+		pc++;
+		status &= ~st_v;
+		status |= nz & st_v;
+		// if result is zero, might also be negative, so use secondary N bit
+		if ( !(a & nz) )
+			nz = (nz << 4) & 0x800;
+		goto loop;
 		
 // Add/subtract
 
@@ -614,10 +579,12 @@ imm##op:                                \
 	adc_imm: {
 		int carry = (c >> 8) & 1;
 		int ov = (a ^ 0x80) + carry + (BOOST::int8_t) data; // sign-extend
+		status &= ~st_v;
+		status |= (ov >> 2) & 0x40;
 		c = nz = a + data + carry;
+		pc++;
 		a = (uint8_t) nz;
-		status = (status & ~st_v) | ((ov >> 2) & 0x40);
-		goto inc_pc_loop;
+		goto loop;
 	}
 	
 // Shift/rotate
@@ -661,8 +628,9 @@ imm##op:                                \
 		nz = (c >> 8) & 1;
 		nz |= (c = READ( data ) << 1);
 	rotate_common:
+		pc++;
 		WRITE( data, (uint8_t) nz );
-		goto inc_pc_loop;
+		goto loop;
 	
 	case 0x7E: // ROR abs,X
 		data += x;
@@ -731,8 +699,9 @@ imm##op:                                \
 	add_nz_zp:
 		nz += READ_LOW( data );
 	write_nz_zp:
+		pc++;
 		WRITE_LOW( data, nz );
-		goto inc_pc_loop;
+		goto loop;
 	
 	case 0xFE: // INC abs,x
 		HANDLE_PAGE_CROSSING( data + x );
@@ -783,24 +752,23 @@ imm##op:                                \
 		goto loop;
 		
 	case 0x68: // PLA
-		a = nz = POP();
+		a = nz = READ_LOW( sp );
+		sp = (sp - 0xff) | 0x100;
 		goto loop;
 		
 	{
 		int temp;
 	case 0x40: // RTI
-		temp = POP();
-		pc = POP();
-		pc |= POP() << 8;
+		temp = READ_LOW( sp );
+		pc   = READ_LOW( 0x100 | (sp - 0xff) );
+		pc  |= READ_LOW( 0x100 | (sp - 0xfe) ) * 0x100;
+		sp = (sp - 0xfd) | 0x100;
 		goto set_status;
 	
 	case 0x28: // PLP
-		temp = POP();
+		temp = READ_LOW( sp );
+		sp = (sp - 0xff) | 0x100;
 	set_status:
-		#if !NES_CPU_IRQ_SUPPORT
-			SET_STATUS( temp );
-			goto loop;
-		#endif
 		data = status & st_i;
 		SET_STATUS( temp );
 		if ( !(data & ~status) )
@@ -812,25 +780,24 @@ imm##op:                                \
 	case 0x08: { // PHP
 		int temp;
 		CALC_STATUS( temp );
-		temp |= st_b | st_r;
-		PUSH( temp );
+		PUSH( temp | st_b | st_r );
 		goto loop;
 	}
 	
 	case 0x6C: // JMP (ind)
 		data = GET_ADDR();
 		pc = READ( data );
-		data++;
-		pc |= READ( data ) << 8;
+		pc |= READ( (data & 0xff00) | ((data + 1) & 0xff) ) << 8;
 		goto loop;
 	
 	case 0x00: { // BRK
 		pc++;
-		PUSH( pc >> 8 );
-		PUSH( pc );
+		WRITE_LOW( 0x100 | (sp - 1), pc >> 8 );
+		WRITE_LOW( 0x100 | (sp - 2), pc );
 		int temp;
 		CALC_STATUS( temp );
-		PUSH( temp | st_b | st_r );
+		sp = (sp - 3) | 0x100;
+		WRITE_LOW( sp, temp | st_b | st_r );
 		status |= st_i;
 		pc = READ_PROG16( 0xFFFE );
 		goto loop;
@@ -859,10 +826,6 @@ imm##op:                                \
 		goto loop;
 	
 	case 0x58: // CLI
-		#if !NES_CPU_IRQ_SUPPORT
-			status &= ~st_i;
-			goto loop;
-		#endif
 		if ( !(status & st_i) )
 			goto loop;
 		status &= ~st_i;
@@ -879,7 +842,8 @@ imm##op:                                \
 		pc++;
 	case 0x74: case 0x04: case 0x14: case 0x34: case 0x44: case 0x54: case 0x64: // SKB
 	case 0x80: case 0x82: case 0x89: case 0xC2: case 0xD4: case 0xE2: case 0xF4:
-		goto inc_pc_loop;
+		pc++;
+		goto loop;
 
 	case 0xEA: case 0x1A: case 0x3A: case 0x5A: case 0x7A: case 0xDA: case 0xFA: // NOP
 		goto loop;
@@ -928,9 +892,7 @@ end:
 	}
 	
 	base_time += clock_count;
-	#if NES_CPU_IRQ_SUPPORT
-		this->clock_limit -= clock_count;
-	#endif
+	clock_limit -= clock_count;
 	this->clock_count = 0;
 	r.pc = pc;
 	r.sp = GET_SP();

@@ -1,5 +1,5 @@
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/
 
 #include "Nes_File.h"
 

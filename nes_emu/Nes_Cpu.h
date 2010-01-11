@@ -1,21 +1,14 @@
 
 // Nintendo Entertainment System (NES) 6502 CPU emulator
 
-// Nes_Emu 0.5.0. Copyright (C) 2003-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.5.6. Copyright (C) 2003-2005 Shay Green. GNU LGPL license.
 
 #ifndef NES_CPU_H
 #define NES_CPU_H
 
 #include "blargg_common.h"
 
-	// Nes_Emu-specific options
-	// CPU must support IRQ for games to work
-	#define NES_CPU_IRQ_SUPPORT 1
-
-	// Keep stack pointer masked to 0xff (some games cause the stack to wrap around)
-	#define NES_CPU_MASK_SP 1
-
-typedef long nes_time_t;     // clock cycle count
+typedef long     nes_time_t; // clock cycle count
 typedef unsigned nes_addr_t; // 16-bit address
 
 class Nes_Emu;
@@ -24,14 +17,14 @@ class Nes_Cpu {
 	typedef BOOST::uint8_t uint8_t;
 	enum { page_bits = 11 };
 	enum { page_count = 0x10000 >> page_bits };
-	const uint8_t* code_map [page_count + 1];
+	uint8_t const* code_map [page_count + 1];
 public:
 	Nes_Cpu();
 	
 	// Memory read/write function types. Reader must return value from 0 to 255.
-	void set_callback_data( Nes_Emu* d ) { callback_data = d; }
 	typedef int (*reader_t)( Nes_Emu*, nes_addr_t );
 	typedef void (*writer_t)( Nes_Emu*, nes_addr_t, int data );
+	void set_emu( Nes_Emu* emu ) { callback_data = emu; }
 	
 	// Clear registers, unmap memory, and map code pages to unmapped_page.
 	void reset( const void* unmapped_page = NULL, reader_t read = NULL, writer_t write = NULL );
@@ -43,7 +36,13 @@ public:
 	// Map code memory (memory accessed via the program counter)
 	void map_code( nes_addr_t start, unsigned long size, const void* code );
 	
-	// Map data memory to read and write functions
+	// Set read function for given address range
+	void set_reader( nes_addr_t start, unsigned long size, reader_t );
+	
+	// Set write function for given address range
+	void set_writer( nes_addr_t start, unsigned long size, writer_t );
+	
+	// Map read and write functions for given address range
 	void map_memory( nes_addr_t start, unsigned long size, reader_t, writer_t );
 	
 	// Access memory as the emulated CPU does.
@@ -64,7 +63,6 @@ public:
 		BOOST::uint8_t sp;
 	};
 	registers_t r;
-	// to do: encapsulate registers?
 	
 	// Reasons that run() returns
 	enum result_t {
@@ -81,10 +79,7 @@ public:
 	void time( nes_time_t t );
 	nes_time_t end_time() const         { return base_time + clock_limit; }
 	void end_frame( nes_time_t );
-	#if NES_CPU_IRQ_SUPPORT
-		// can only change end_time when IRQ support is enabled
-		void end_time( nes_time_t t )       { clock_limit = t - base_time; }
-	#endif
+	void end_time( nes_time_t t )       { clock_limit = t - base_time; }
 	
 	// End of public interface
 private:
@@ -94,17 +89,14 @@ private:
 	
 	nes_time_t clock_count;
 	nes_time_t base_time;
-#if NES_CPU_IRQ_SUPPORT
 	nes_time_t clock_limit;
-#else
-	enum { clock_limit = 0 };
-#endif
 
 	Nes_Emu* callback_data;
 	
 	reader_t data_reader [page_count + 1]; // extra entry catches address overflow
 	writer_t data_writer [page_count + 1];
-
+	void set_code_page( int, uint8_t const* );
+	
 public:
 	// low_mem is a full page size so it can be mapped with code_map
 	uint8_t low_mem [page_size > 0x800 ? page_size : 0x800];
@@ -112,7 +104,11 @@ public:
 
 inline BOOST::uint8_t* Nes_Cpu::get_code( nes_addr_t addr )
 {
-	return (uint8_t*) &code_map [addr >> page_bits] [addr & (page_size - 1)];
+	#if BLARGG_NONPORTABLE
+		return (uint8_t*) code_map [addr >> page_bits] + addr;
+	#else
+		return (uint8_t*) code_map [addr >> page_bits] + (addr & (page_size - 1));
+	#endif
 }
 	
 inline void Nes_Cpu::end_frame( nes_time_t end_time )
@@ -123,13 +119,9 @@ inline void Nes_Cpu::end_frame( nes_time_t end_time )
 
 inline void Nes_Cpu::time( nes_time_t t )
 {
-	#if NES_CPU_IRQ_SUPPORT
-		t -= time();
-		clock_limit -= t;
-		base_time += t;
-	#else
-		clock_count = t - base_time;
-	#endif
+	t -= time();
+	clock_limit -= t;
+	base_time += t;
 }
 
 inline void Nes_Cpu::push_byte( int data )
@@ -137,6 +129,12 @@ inline void Nes_Cpu::push_byte( int data )
 	int sp = r.sp;
 	r.sp = (sp - 1) & 0xff;
 	low_mem [0x100 + sp] = data;
+}
+
+inline void Nes_Cpu::map_memory( nes_addr_t addr, unsigned long s, reader_t r, writer_t w )
+{
+	set_reader( addr, s, r );
+	set_writer( addr, s, w );
 }
 
 #endif

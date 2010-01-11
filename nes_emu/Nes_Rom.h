@@ -1,7 +1,7 @@
 
 // NES ROM data loaded into memory
 
-// Nes_Emu 0.5.0. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.5.6. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
 
 #ifndef NES_ROM_H
 #define NES_ROM_H
@@ -26,6 +26,9 @@ public:
 	// True if a ROM is currently loaded
 	bool loaded() const { return prg_ != NULL; }
 	
+	// Free any loaded ROM data
+	void reset();
+	
 	// True if ROM claims to have battery-backed memory
 	bool has_battery_ram() const;
 	
@@ -45,6 +48,12 @@ public:
 	// bytes at offsets 6 and 7.
 	void set_mapper( int mapper_lsb, int mapper_msb );
 	
+	// Initial mirroring setup
+	int mirroring() const { return mapper & 0x09; }
+	
+	// iNES mapper code
+	int mapper_code() const;
+	
 	// Pointer to beginning of PRG data
 	byte      * prg()       { return prg_; }
 	byte const* prg() const { return prg_; }
@@ -62,8 +71,6 @@ private:
 	long chr_size_;
 	unsigned mapper;
 	long round_to_bank_size( long n );
-	
-	friend class Nes_Emu;
 };
 
 inline bool Nes_Rom::has_battery_ram() const { return mapper & 0x02; }
@@ -72,6 +79,8 @@ inline void Nes_Rom::set_mapper( int mapper_lsb, int mapper_msb )
 {
 	mapper = mapper_msb * 0x100 + mapper_lsb;
 }
+
+inline int Nes_Rom::mapper_code() const { return ((mapper >> 8) & 0xf0) | ((mapper >> 4) & 0x0f); }
 
 #endif
 

@@ -1,7 +1,7 @@
 
 // NES recorder with smooth rewind (backwards playback)
 
-// Nes_Emu 0.5.0. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.5.6. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
 
 #ifndef NES_REWINDER_H
 #define NES_REWINDER_H
@@ -38,21 +38,23 @@ public:
 	void seek( frame_count_t );
 	long samples_avail() const;
 	long read_samples( short* out, long max_samples );
+	int palette_size() const { return frames [current_frame].palette_size; }
 	int palette_entry( int i ) const { return frames [current_frame].palette [i]; }
+	blargg_err_t init();
 	
 	// End of public interface
 private:
 	
 	BOOST::uint8_t* pixels;
 	long row_bytes;
-	blargg_err_t init();
 	
 	// frame cache
 	struct frame_t
 	{
 		int sample_count;
 		bool fade_out;
-		byte palette [palette_size];
+		int palette_size;
+		byte palette [max_palette_size];
 		enum { max_samples = 2048 };
 		blip_sample_t samples [max_samples];
 	};
@@ -60,7 +62,7 @@ private:
 	int current_frame;
 	bool fade_sound_in;
 	void set_output( int index );
-	void frame_rendered( int index );
+	void frame_rendered( int index, bool using_buffer );
 	void clear_cache(); // Nes_Recorder override
 	
 	// clamped seek

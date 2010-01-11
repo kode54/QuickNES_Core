@@ -1,12 +1,9 @@
 
-// NES PPU graphics rendering
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/
-
-#include "Nes_Ppu.h"
+#include "Nes_Ppu_Rendering.h"
 
 #include <stddef.h>
-#include "blargg_endian.h"
 
 /* Copyright (C) 2004-2005 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
@@ -21,87 +18,23 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
 #include BLARGG_SOURCE_BEGIN
 
+#include BLARGG_ENABLE_OPTIMIZER
+
+typedef BOOST::uint32_t uint32_t;
+typedef BOOST::uint8_t byte;
+
 #ifdef __MWERKS__
 	static unsigned zero = 0; // helps CodeWarrior optimizer when added to constants
 #else
 	unsigned const zero = 0; // compile-time constant on other compilers
 #endif
 
-// everything here is speed-critical
-#include BLARGG_ENABLE_OPTIMIZER
+// Pixel filling
 
-typedef BOOST::uint32_t uint32_t;
-typedef BOOST::uint8_t byte;
-
-template<class T>
-inline const T& min( const T& x, const T& y )
+void Nes_Ppu_Rendering::fill_background( int count )
 {
-	if ( x < y )
-		return x;
-	return y;
-}
-
-inline Nes_Ppu_::cached_tile_t const& Nes_Ppu_::get_tile( int i, bool h_flip ) const
-{
-	return (h_flip ? flipped_tiles : tile_cache)
-			[(unsigned) map_chr_addr( i * bytes_per_tile ) / bytes_per_tile];
-}
-
-inline uint32_t reorder( uint32_t n )
-{
-	n |= n << 7;
-	return ((n << 14) | n);
-}
-
-void Nes_Ppu::update_tiles( int first_tile )
-{
-	for ( int i = 0; i < 512; i++ )
-	{
-		if ( !tiles_modified [i] )
-			continue;
-		
-		tiles_modified [i] = false;
-		
-		const byte* in = chr_rom + (i + first_tile) * bytes_per_tile;
-		byte* out = (byte*) tile_cache [i + first_tile];
-		byte* flipped_out = (byte*) flipped_tiles [i + first_tile];
-		
-		static int zero = 0; // helps MWCW optimizer
-		const uint32_t bit_mask = 0x11111111 + zero;
-		
-		for ( int n = 4; n--; )
-		{
-			uint32_t c =
-					((reorder( in [0] ) & bit_mask) << 0) |
-					((reorder( in [8] ) & bit_mask) << 1) |
-					((reorder( in [1] ) & bit_mask) << 2) |
-					((reorder( in [9] ) & bit_mask) << 3);
-			in += 2;
-			
-			SET_BE32( out, c );
-			out += 4;
-			
-			// make horizontally-flipped version
-			c =     ((c >> 28) & 0x0000000f) |
-					((c >> 20) & 0x000000f0) |
-					((c >> 12) & 0x00000f00) |
-					((c >>  4) & 0x0000f000) |
-					((c <<  4) & 0x000f0000) |
-					((c << 12) & 0x00f00000) |
-					((c << 20) & 0x0f000000) |
-					((c << 28) & 0xf0000000);
-			SET_BE32( flipped_out, c );
-			flipped_out += 4;
-		}
-	}
-}
-
-// Fill
-
-void Nes_Ppu::black_background( int begin, int end )
-{
-	ptrdiff_t const next_line = row_bytes - image_width;
-	uint32_t* pixels = (uint32_t*) (base_pixels + begin * row_bytes);
+	ptrdiff_t const next_line = scanline_row_bytes - image_width;
+	uint32_t* pixels = (uint32_t*) scanline_pixels;
 	
 	uint32_t fill = palette_offset;
 	if ( (vram_addr & 0x3f00) == 0x3f00 )
@@ -109,11 +42,11 @@ void Nes_Ppu::black_background( int begin, int end )
 		// PPU uses current palette entry if addr is within palette ram
 		int color = vram_addr & 0x1f;
 		if ( !(color & 3) )
-			color &= ~0x10;
+			color &= 0x0f;
 		fill += color * 0x01010101;
 	}
 	
-	for ( int n = end - begin; n--; )
+	for ( int n = count; n--; )
 	{
 		for ( int n = image_width / 16; n--; )
 		{
@@ -127,13 +60,13 @@ void Nes_Ppu::black_background( int begin, int end )
 	}
 }
 
-void Nes_Ppu::clip_left( int begin, int end )
+void Nes_Ppu_Rendering::clip_left( int count )
 {
-	ptrdiff_t next_line = row_bytes;
-	byte* p = base_pixels + row_bytes * begin;
+	ptrdiff_t next_line = scanline_row_bytes;
+	byte* p = scanline_pixels;
 	uint32_t fill = palette_offset;
 	
-	for ( int n = end - begin; n--; )
+	for ( int n = count; n--; )
 	{
 		((uint32_t*) p) [0] = fill;
 		((uint32_t*) p) [1] = fill;
@@ -141,13 +74,13 @@ void Nes_Ppu::clip_left( int begin, int end )
 	}
 }
 
-void Nes_Ppu::save_left( int begin, int end )
+void Nes_Ppu_Rendering::save_left( int count )
 {
-	ptrdiff_t next_line = row_bytes;
-	byte* in = base_pixels + row_bytes * begin;
+	ptrdiff_t next_line = scanline_row_bytes;
+	byte* in = scanline_pixels;
 	uint32_t* out = impl->clip_buf;
 	
-	for ( int n = end - begin; n--; )
+	for ( int n = count; n--; )
 	{
 		uint32_t in0 = ((uint32_t*) in) [0];
 		uint32_t in1 = ((uint32_t*) in) [1];
@@ -158,13 +91,13 @@ void Nes_Ppu::save_left( int begin, int end )
 	}
 }
 
-void Nes_Ppu::restore_left( int begin, int end )
+void Nes_Ppu_Rendering::restore_left( int count )
 {
-	ptrdiff_t next_line = row_bytes;
-	byte* out = base_pixels + row_bytes * begin;
+	ptrdiff_t next_line = scanline_row_bytes;
+	byte* out = scanline_pixels;
 	uint32_t* in = impl->clip_buf;
 	
-	for ( int n = end - begin; n--; )
+	for ( int n = count; n--; )
 	{
 		uint32_t in0 = in [0];
 		uint32_t in1 = in [1];
@@ -178,13 +111,13 @@ void Nes_Ppu::restore_left( int begin, int end )
 // Background
 
 template<int clipped>
-void draw_bg_row( Nes_Ppu_& ppu, int scanline, int skip, int height )
+void Nes_Ppu_Rendering_<clipped>::draw_bg( Nes_Ppu_Rendering& ppu, int scanline,
+		int skip, int height )
 {
-	ptrdiff_t const row_bytes = ppu.row_bytes;
-	byte* pixels = ppu.base_pixels + scanline * row_bytes - ppu.pixel_x;
+	ptrdiff_t const row_bytes = ppu.scanline_row_bytes;
+	byte* pixels = ppu.scanline_pixels + scanline * row_bytes - ppu.pixel_x;
 	
 	int vaddr = ppu.vram_addr;
-	ppu.vram_addr = vaddr;
 	int y = (vaddr >> 5) & 31;
 	int attr_addr = 0x3c0 + (y >> 2) * 8;
 	int attr_shift = ((y << 1) & 4);
@@ -210,7 +143,7 @@ void draw_bg_row( Nes_Ppu_& ppu, int scanline, int skip, int height )
 			uint32_t offset = (attrib & 3) * attrib_factor + ppu.palette_offset;
 			
 			// draw one tile
-			Nes_Ppu_::cache_t const* lines =
+			Nes_Ppu_Rendering::cache_t const* lines =
 					ppu.get_tile( nametable [addr] + bg_bank );
 			byte* p = pixels;
 			if ( clipped )
@@ -268,27 +201,11 @@ void draw_bg_row( Nes_Ppu_& ppu, int scanline, int skip, int height )
 	}
 }
 
-void Nes_Ppu::draw_background( int first, int last )
-{
-	vram_addr = (vram_addr & ~0x41f) | (vram_temp & 0x41f);
-	while ( first < last )
-	{
-		int y = vram_addr >> 12;
-		int height = min( last - first, 8 - y );
-		if ( y == 0 && height == 8 )
-			draw_bg_row<0>( *this, first, y, height );
-		else
-			draw_bg_row<1>( *this, first, y, height );
-		
-		run_hblank( min( last - first - 1, height ) );
-		first += height;
-	}
-}
-
 // Sprites
 
 template<int clipped>
-void ppu_draw_sprite( Nes_Ppu_& ppu, byte const* sprite, int begin, int end )
+void Nes_Ppu_Rendering_<clipped>::draw_sprite( Nes_Ppu_Rendering& ppu, byte const* sprite,
+		int begin, int end )
 {
 	int top = sprite [0] + 1;
 	int tall = (ppu.w2000 >> 5) & 1;
@@ -324,8 +241,9 @@ void ppu_draw_sprite( Nes_Ppu_& ppu, byte const* sprite, int begin, int end )
 	byte* scanlines = ppu.sprite_scanlines + (clipped ? top + skip : top);
 	
 	// dest
-	ptrdiff_t next_row = ppu.row_bytes;
-	byte* out = ppu.base_pixels + (clipped ? top + skip : top) * next_row + sprite [3];
+	ptrdiff_t next_row = ppu.scanline_row_bytes;
+	byte* out = ppu.scanline_pixels + sprite [3] +
+			((clipped ? top + skip : top) - begin) * next_row;
 	if ( sprite [2] & 0x80 )
 	{
 		// vertical flip
@@ -344,7 +262,7 @@ void ppu_draw_sprite( Nes_Ppu_& ppu, byte const* sprite, int begin, int end )
 	int tile = sprite [1] + ((ppu.w2000 << 5) & 0x100);
 	if ( tall )
 		tile = (tile & 1) * 0x100 + (tile & 0xfe);
-	Nes_Ppu_::cache_t const* lines = ppu.get_tile( tile, sprite [2] & 0x40 );
+	Nes_Ppu_Rendering::cache_t const* lines = ppu.get_tile( tile, sprite [2] & 0x40 );
 	if ( clipped )
 		lines += skip >> 1;
 	
@@ -360,7 +278,7 @@ void ppu_draw_sprite( Nes_Ppu_& ppu, byte const* sprite, int begin, int end )
 		CALC_FOUR( (uint32_t&) out [4], line, out1 )    \
 		*scanlines = sprite_count + 1;  \
 		scanlines += dir;               \
-		if ( sprite_count < 64 ) {      \
+		if ( sprite_count < ppu.max_sprites ) { \
 			(uint32_t&) out [0] = out0; \
 			(uint32_t&) out [4] = out1; \
 		}                               \
@@ -445,10 +363,115 @@ void ppu_draw_sprite( Nes_Ppu_& ppu, byte const* sprite, int begin, int end )
 	}
 }
 
-void Nes_Ppu::draw_sprites( int begin, int end )
+void Nes_Ppu_Rendering::check_sprite_hit( int begin, int end )
 {
-	int height_plus_one = ((w2000 >> 2) & 8) + (8 + 1);
-	for ( byte const* sprite = spr_ram; sprite != spr_ram + 0x100; sprite += 4 )
+	int sprite_height = this->sprite_height();
+	
+	int top = spr_ram [0] + 1;
+	int bottom = top + sprite_height;
+	
+	int off_top = begin - top;
+	if ( off_top < 0 )
+		off_top = 0;
+	top += off_top;
+	
+	if ( bottom > end )
+		bottom = end;
+	
+	if ( top >= bottom )
+		return;
+	
+	int visible = bottom - top;
+	
+	// save and compare pixels into buffer
+	uint32_t buf [16 * 2];
+	int sprite_x = spr_ram [3];
+	if ( sprite_x < 8 && (w2001 & 0x01e) != 0x1e )
+		sprite_x = 8; // ignore left 8-pixel band if clipping is enabled
+	if ( sprite_x > 247 ) // don't check pixel 255 and beyond
+		sprite_x = 247;
+	byte const* bg = scanline_pixels + (top - begin) * scanline_row_bytes + sprite_x;
+	
+	// save pixels under sprite and pre-mask left edge if clipping is enabled
+	{
+		byte const* in = bg;
+		uint32_t* out = buf;
+		ptrdiff_t const row_bytes = this->scanline_row_bytes;
+		unsigned long mask = 0x03030303 + zero;
+		unsigned long gen  = 0x80808080 + zero;
+		for ( int n = visible; n--; )
+		{
+			unsigned long in0 = (uint32_t&) in [0];
+			unsigned long in1 = (uint32_t&) in [4];
+			in += row_bytes;
+			
+			out [0] = gen - (in0 & mask);
+			out [1] = gen - (in1 & mask);
+			out += 2;
+		}
+	}
+	
+	if ( off_top | (visible - sprite_height) )
+		Nes_Ppu_Rendering_<1>::draw_sprite( *this, spr_ram, begin, end );
+	else
+		Nes_Ppu_Rendering_<0>::draw_sprite( *this, spr_ram, begin, end );
+	
+	// find any previously non-transparent pixels that now have sprite or front flag set
+	byte const* after = bg;
+	uint32_t const* before = buf;
+	ptrdiff_t const row_bytes = this->scanline_row_bytes;
+	unsigned long mask = 0x30303030 + zero;
+	for ( int i = 0; i < visible; i++ )
+	{
+		unsigned long hit0 = before [0] & (uint32_t&) after [0];
+		unsigned long hit1 = before [1] & (uint32_t&) after [4];
+		
+		after += row_bytes;
+		before += 2;
+		
+		if ( (hit0 | hit1) & mask )
+		{
+			// hit detected; determine X position
+			
+			int x = sprite_x;
+			hit0 &= mask;
+			if ( !hit0 )
+			{
+				hit0 = hit1 & mask;
+				x += 4;
+			}
+			uint32_t hit = hit0;
+			byte* p = (byte*) &hit;
+			
+			if ( !p [0] )
+			{
+				if ( p [1] )
+					x += 1;
+				else if ( p [2] )
+					x += 2;
+				else
+					x += 3;
+			}
+			
+			assert( x < 255 );
+			sprite_hit_y = top - off_top + i;
+			sprite_hit_x = x;
+			break;
+		}
+	}
+}
+
+void Nes_Ppu_Rendering::draw_sprites( int begin, int end )
+{
+	int starting_sprite = 0;
+	if ( !sprite_hit_y )
+	{
+		check_sprite_hit( begin, end );
+		starting_sprite = 4;
+	}
+	
+	int height_plus_one = this->sprite_height() + 1;
+	for ( byte const* sprite = spr_ram + starting_sprite; sprite != spr_ram + 0x100; sprite += 4 )
 	{
 		int top = sprite [0] + 1;
 		int bottom = sprite [0] + height_plus_one;
@@ -457,10 +480,20 @@ void Nes_Ppu::draw_sprites( int begin, int end )
 		{
 			// sprite is visible
 			if ( ((top - begin) | (end - bottom)) >= 0 )
-				ppu_draw_sprite<0>( *this, sprite, begin, end ); // needs no clipping
+				Nes_Ppu_Rendering_<0>::draw_sprite( *this, sprite, begin, end ); // needs no clipping
 			else
-				ppu_draw_sprite<1>( *this, sprite, begin, end ); // clipped
+				Nes_Ppu_Rendering_<1>::draw_sprite( *this, sprite, begin, end ); // clipped
 		}
 	}
+}
+
+// Try to get compiler to instantiate functions
+template class Nes_Ppu_Rendering_<0>;
+template class Nes_Ppu_Rendering_<1>;
+
+static void instantiate_template()
+{
+	Nes_Ppu_Rendering_<0>::draw_bg( *(Nes_Ppu_Rendering*) 0, 0, 0, 0 );
+	Nes_Ppu_Rendering_<1>::draw_bg( *(Nes_Ppu_Rendering*) 0, 0, 0, 0 );
 }
 

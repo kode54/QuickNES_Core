@@ -1,5 +1,5 @@
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/
 
 #include "nes_state.h"
 
@@ -46,7 +46,7 @@ void ppu_state_t::swap()
 	SWAP_LE( vram_temp );
 }
 
-void apu_state_t::swap()
+void apu_snapshot_t::swap()
 {
 	SWAP_LE( delay );
 	SWAP_LE( square1.delay );

@@ -1,7 +1,7 @@
 
 // CPU Byte Order Utilities
 
-// Nes_Emu 0.5.0. Copyright (C) 2005 Shay Green. MIT license.
+// Nes_Emu 0.5.6. Copyright (C) 2005 Shay Green. MIT license.
 
 #ifndef BLARGG_ENDIAN
 #define BLARGG_ENDIAN
@@ -10,12 +10,12 @@
 
 #if 0
 	// Read 16/32-bit little-endian integer from memory
-	BOOST::uint16_t GET_LE16( void const* );
-	BOOST::uint32_t GET_LE32( void const* );
+	unsigned      GET_LE16( void const* );
+	unsigned long GET_LE32( void const* );
 
 	// Read 16/32-bit big-endian integer from memory
-	BOOST::uint16_t GET_BE16( void const* );
-	BOOST::uint32_t GET_BE32( void const* );
+	unsigned      GET_BE16( void const* );
+	unsigned long GET_BE32( void const* );
 
 	// Write 16/32-bit integer to memory in little-endian format
 	void SET_LE16( void*, unsigned );
@@ -26,19 +26,19 @@
 	void SET_BE32( void*, unsigned long );
 #endif
 
-inline BOOST::uint16_t get_le16( void const* p )
+inline unsigned get_le16( void const* p )
 {
 	return  ((unsigned char*) p) [1] * 0x100 +
 			((unsigned char*) p) [0];
 }
 
-inline BOOST::uint16_t get_be16( void const* p )
+inline unsigned get_be16( void const* p )
 {
 	return  ((unsigned char*) p) [0] * 0x100 +
 			((unsigned char*) p) [1];
 }
 
-inline BOOST::uint32_t get_le32( void const* p )
+inline unsigned long get_le32( void const* p )
 {
 	return  ((unsigned char*) p) [3] * 0x01000000 +
 			((unsigned char*) p) [2] * 0x00010000 +
@@ -46,7 +46,7 @@ inline BOOST::uint32_t get_le32( void const* p )
 			((unsigned char*) p) [0];
 }
 
-inline BOOST::uint32_t get_be32( void const* p )
+inline unsigned long get_be32( void const* p )
 {
 	return  ((unsigned char*) p) [0] * 0x01000000 +
 			((unsigned char*) p) [1] * 0x00010000 +
@@ -93,8 +93,8 @@ inline void set_be32( void* p, unsigned long n )
 	#elif BLARGG_NONPORTABLE && BLARGG_CPU_POWERPC
 		// PowerPC has special byte-reversed instructions
 		// to do: assumes that PowerPC is running in big-endian mode
-		#define GET_LE16( addr )        ((BOOST::uint16_t) __lhbrx( (addr), 0 ))
-		#define GET_LE32( addr )        ((BOOST::uint16_t) __lwbrx( (addr), 0 ))
+		#define GET_LE16( addr )        (__lhbrx( (addr), 0 ))
+		#define GET_LE32( addr )        (__lwbrx( (addr), 0 ))
 		#define SET_LE16( addr, data )  (__sthbrx( (data), (addr), 0 ))
 		#define SET_LE32( addr, data )  (__stwbrx( (data), (addr), 0 ))
 

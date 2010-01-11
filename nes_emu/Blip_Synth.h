@@ -2,7 +2,7 @@
 // Blip_Synth and Blip_Wave are waveform transition synthesizers for adding
 // waveforms to a Blip_Buffer.
 
-// Blip_Buffer 0.3.3. Copyright (C) 2003-2005 Shay Green. GNU LGPL license.
+// Blip_Buffer 0.3.4. Copyright (C) 2003-2005 Shay Green. GNU LGPL license.
 
 #ifndef BLIP_SYNTH_H
 #define BLIP_SYNTH_H
@@ -44,8 +44,10 @@ class Blip_Synth {
 	};
 	blip_pair_t_  impulses [impulse_size * res * 2 + base_impulses_size];
 	Blip_Impulse_ impulse;
+	void init() { impulse.init( impulses, width, res, fine_bits ); }
 public:
-	Blip_Synth()                            { impulse.init( impulses, width, res, fine_bits ); }
+	Blip_Synth()                            { init(); }
+	Blip_Synth( double volume )             { init(); this->volume( volume ); }
 	
 	// Configure low-pass filter (see notes.txt). Not optimized for real-time control
 	void treble_eq( const blip_eq_t& eq )   { impulse.treble_eq( eq ); }
@@ -91,9 +93,11 @@ class Blip_Wave {
 	Blip_Synth<quality,range> synth;
 	blip_time_t time_;
 	int last_amp;
+	void init() { time_ = 0; last_amp = 0; }
 public:
 	// Start wave at time 0 and amplitude 0
-	Blip_Wave()                         : time_( 0 ), last_amp( 0 ) { }
+	Blip_Wave()                         { init(); }
+	Blip_Wave( double volume )          { init(); this->volume( volume ); }
 	
 	// See Blip_Synth for description
 	void volume( double v )             { synth.volume( v ); }
@@ -114,13 +118,14 @@ public:
 	void delay( blip_time_t t )         { time_ += t; }
 	
 	// End time frame of specified duration. Localize time to new frame.
-	void end_frame( blip_time_t duration ) {
-		assert(( "Blip_Wave::end_frame(): Wave hadn't yet been run for entire frame",
-				duration <= time_ ));
+	// If wave hadn't been run to end of frame, start it at beginning of new frame.
+	void end_frame( blip_time_t duration )
+	{
 		time_ -= duration;
+		if ( time_ < 0 )
+			time_ = 0;
 	}
 };
-
 
 // End of public interface
 	

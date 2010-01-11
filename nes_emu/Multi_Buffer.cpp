@@ -1,5 +1,5 @@
 
-// Blip_Buffer 0.3.3. http://www.slack.net/~ant/libs/
+// Blip_Buffer 0.3.4. http://www.slack.net/~ant/libs/
 
 #include "Multi_Buffer.h"
 

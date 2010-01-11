@@ -39,5 +39,28 @@
 // If ptr is NULL, return out of memory error string.
 #define BLARGG_CHECK_ALLOC( ptr )   do { if ( !(ptr) ) return "Out of memory"; } while ( 0 )
 
+// Avoid any macros which evaluate their arguments multiple times
+#undef min
+#undef max
+
+// using const references generates crappy code, and I am currenly only using these
+// for built-in types, so they take arguments by value
+
+template<class T>
+inline T min( T x, T y )
+{
+	if ( x < y )
+		return x;
+	return y;
+}
+
+template<class T>
+inline T max( T x, T y )
+{
+	if ( x < y )
+		return y;
+	return x;
+}
+
 #endif
 

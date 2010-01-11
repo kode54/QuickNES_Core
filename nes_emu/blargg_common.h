@@ -138,9 +138,7 @@ typedef const char* blargg_err_t;
 const blargg_err_t blargg_success = 0;
 
 // BLARGG_NEW is used in place of 'new' to create objects. By default,
-// normal new is used. If your compiler throws an exception when memory
-// isn't available, you can prevent this by defining BLARGG_NEW to
-// new (std::nothrow)
+// plain new is used.
 #ifndef BLARGG_NEW
 	#define BLARGG_NEW new
 #endif
@@ -158,9 +156,6 @@ const blargg_err_t blargg_success = 0;
 #endif
 
 // BLARGG_NONPORTABLE (allow use of nonportable optimizations/features)
-
-// Enable platform-specific optimizations. Defaults to off.
-//#define BLARGG_NONPORTABLE 1
 #ifndef BLARGG_NONPORTABLE
 	#define BLARGG_NONPORTABLE 0
 #endif

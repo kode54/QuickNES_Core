@@ -1,5 +1,5 @@
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/
 
 #include "Nes_Mapper.h"
 
@@ -19,376 +19,244 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
 #include BLARGG_SOURCE_BEGIN
 
-void Nes_Mapper::init( const char* new_name )
+Nes_Mapper::Nes_Mapper()
 {
 	emu_ = NULL;
-	initial_mirroring = 0;
-	chr_is_rom = false;
-	name_ = new_name;
-	state = NULL;
+	state = "";
 	state_size = 0;
-	prg_size = 0;
-	prg = NULL;
-	nes_vrc6_ = NULL;
-}
-
-Nes_Mapper::Nes_Mapper( const char* new_name )
-{
-	init( new_name );
-}
-
-Nes_Mapper::Nes_Mapper( const char* new_name, void* new_state, int new_state_size )
-{
-	require( new_state_size <= max_mapper_state_size );
-	init( new_name );
-	state = new_state;
-	state_size = new_state_size;
 }
 
 Nes_Mapper::~Nes_Mapper()
 {
 }
 
-void Nes_Mapper::default_reset()
+// Sets mirroring, maps first 8K CHR in, first and last 16K of ROM,
+// intercepts writes to upper half of memory, and clears registered state.
+void Nes_Mapper::default_reset_state()
 {
-	if ( initial_mirroring & 8 )
+	int mirroring = rom_->mirroring();
+	if ( mirroring & 8 )
 		mirror_full();
-	else if ( initial_mirroring & 1 )
+	else if ( mirroring & 1 )
 		mirror_vert();
 	else
 		mirror_horiz();
 	
 	set_chr_bank( 0, bank_8k, 0 );
-	set_prg_bank( 0, bank_16k, 0 );
-	set_prg_bank( 1, bank_16k, last_bank );
+	
+	set_prg_bank( 0x8000, bank_16k, 0 );
+	set_prg_bank( 0xC000, bank_16k, last_bank );
+	
+	intercept_writes( 0x8000, 0x8000 );
+	
 	memset( state, 0, state_size );
 }
 
-int Nes_Mapper::save_state( mapper_state_t* out )
+void Nes_Mapper::reset()
 {
-	memcpy( out->state, state, state_size );
-	return state_size;
+	default_reset_state();
+	reset_state();
+	apply_mapping();
+}
+
+void mapper_state_t::write( const void* p, unsigned long s )
+{
+	require( s <= max_mapper_state_size );
+	require( !size );
+	size = s;
+	memcpy( data, p, s );
+}
+
+int mapper_state_t::read( void* p, unsigned long s ) const
+{
+	if ( s > size )
+		s = size;
+	memcpy( p, data, s );
+	return s;
+}
+
+void Nes_Mapper::save_state( mapper_state_t& out )
+{
+	out.write( state, state_size );
 }
 
 void Nes_Mapper::load_state( mapper_state_t const& in )
 {
-	default_reset();
-	memcpy( state, in.state, state_size );
+	default_reset_state();
+	read_state( in );
 	apply_mapping();
 }
+
+void Nes_Mapper::read_state( mapper_state_t const& in )
+{
+	memset( state, 0, state_size );
+	in.read( state, state_size );
+	apply_mapping();
+}
+
+// Timing
+
+void Nes_Mapper::irq_changed() { emu_->irq_changed(); }
+	
+nes_time_t Nes_Mapper::next_irq( nes_time_t ) { return no_irq; }
+
+void Nes_Mapper::a12_clocked( nes_time_t ) { }
 
 void Nes_Mapper::run_until( nes_time_t ) { }
 
 void Nes_Mapper::end_frame( nes_time_t ) { }
 
-nes_time_t Nes_Mapper::next_irq( nes_time_t )
+bool Nes_Mapper::ppu_enabled() const { return emu().get_ppu().bg_enabled(); }
+
+// Sound
+
+int Nes_Mapper::channel_count() const { return 0; }
+
+void Nes_Mapper::set_channel_buf( int index, Blip_Buffer* ) { require( false ); }
+
+void Nes_Mapper::set_treble( blip_eq_t const& ) { }
+
+// Memory interception
+
+int Nes_Mapper::read_mapper( Nes_Emu* emu, nes_addr_t addr )
 {
-	return no_irq;
+	return emu->mapper->read( emu->clock(), addr );
 }
 
-void Nes_Mapper::set_chr_bank( int addr, bank_size_t bs, int bank )
+void Nes_Mapper::write_mapper( Nes_Emu* emu, nes_addr_t addr, int data )
 {
-	emu()->sync_ppu(); 
-	emu()->get_ppu().set_chr_bank( addr, 1 << bs, bank << bs );
+	emu->mapper->write( emu->clock(), addr, data );
 }
 
-void Nes_Mapper::set_prg_bank( int cpu_page, bank_size_t bs, int prg_page )
+int Nes_Mapper::read( nes_time_t time, nes_addr_t addr )
 {
-	int bank_count = prg_size >> bs;
-	if ( prg_page < 0 )
-		prg_page += bank_count;
-	
-	if ( prg_page >= bank_count )
-	{
-		if ( prg_size & (prg_size - 1) )
-			dprintf( "set_prg_bank: bank out of range and PRG not a power of two in size\n" );
-		
-		prg_page %= bank_count;
-	}
-	
-	emu()->get_cpu().map_code( 0x8000 + (cpu_page << bs), 1 << bs, prg + (prg_page << bs) );
+	return emu().generic_read( time, addr );
 }
 
-void Nes_Mapper::mirror_horiz( int page )
+void Nes_Mapper::write( nes_time_t time, nes_addr_t addr, int data )
 {
-	emu()->sync_ppu(); 
-	emu()->get_ppu().set_nt_banks( page, page, page ^ 1, page ^ 1 );
+	emu().generic_write( time, addr, data );
 }
 
-void Nes_Mapper::mirror_vert( int page )
+void Nes_Mapper::intercept_reads( nes_addr_t addr, unsigned size )
 {
-	emu()->sync_ppu(); 
-	emu()->get_ppu().set_nt_banks( page, page ^ 1, page, page ^ 1 );
+	require( addr >= 0x2000 );
+	require( addr + size <= 0x10000 );
+	nes_addr_t end = addr + size + Nes_Cpu::page_size - 1;
+	end  -= end  % Nes_Cpu::page_size;
+	addr -= addr % Nes_Cpu::page_size;
+	emu().cpu.set_reader( addr, end - addr, read_mapper );
 }
 
-void Nes_Mapper::mirror_single( int page )
+void Nes_Mapper::intercept_writes( nes_addr_t addr, unsigned size )
 {
-	emu()->sync_ppu(); 
-	emu()->get_ppu().set_nt_banks( page, page, page, page );
+	require( addr >= 0x2000 );
+	require( addr + size <= 0x10000 );
+	nes_addr_t end = addr + size + Nes_Cpu::page_size - 1;
+	end  -= end  % Nes_Cpu::page_size;
+	addr -= addr % Nes_Cpu::page_size;
+	emu().cpu.set_writer( addr, end - addr, write_mapper );
 }
 
-void Nes_Mapper::mirror_full()
+// Memory mapping
+
+void Nes_Mapper::enable_sram( bool enabled, bool read_only )
 {
-	emu()->sync_ppu(); 
-	emu()->get_ppu().set_nt_banks( 0, 1, 2, 3 );
+	emu_->enable_sram( enabled, read_only );
 }
 
-// None
-
-class Mapper_None : public Nes_Mapper {
-public:
-	Mapper_None() : Nes_Mapper( "None" ) { }
-	
-	void reset() { }
-	
-	void apply_mapping() { }
-	
-	void write( nes_time_t, nes_addr_t addr, int data ) { }
-};
-
-// UNROM
-
-class Mapper_Unrom : public Nes_Mapper {
-	byte bank;
-public:
-	Mapper_Unrom() : Nes_Mapper( "UNROM", &bank, 1 ) { }
-	
-	void reset()
-	{
-		bank = 0;
-		apply_mapping();
-	}
-	
-	void apply_mapping()
-	{
-		write( 0, 0, bank );
-	}
-	
-	void write( nes_time_t, nes_addr_t addr, int data )
-	{
-		bank = data;
-		set_prg_bank( 0, bank_16k, bank );
-	}
-};
-
-// Nina-1
-
-class Mapper_Nina1 : public Nes_Mapper {
-	byte bank;
-public:
-	Mapper_Nina1() : Nes_Mapper( "Nina-1 (Deadly Towers only)", &bank, 1 ) { }
-	
-	void reset()
-	{
-		bank = 0;
-		apply_mapping();
-	}
-	
-	void apply_mapping()
-	{
-		write( 0, 0, bank );
-	}
-	
-	void write( nes_time_t, nes_addr_t addr, int data )
-	{
-		bank = data;
-		set_prg_bank( 0, bank_32k, bank );
-	}
-};
-
-// GNROM
-
-class Mapper_Gnrom : public Nes_Mapper {
-	byte bank;
-public:
-	Mapper_Gnrom() : Nes_Mapper( "GNROM", &bank, 1 ) { }
-	
-	void reset()
-	{
-		bank = 0;
-		apply_mapping();
-	}
-	
-	void apply_mapping()
-	{
-		int b = bank;
-		bank = ~b;
-		write( 0, 0, b );
-	}
-	
-	void write( nes_time_t, nes_addr_t addr, int data )
-	{
-		int changed = bank ^ data;
-		bank = data;
-		if ( changed & 0x03 )
-			set_chr_bank( 0, bank_8k, bank & 3 );
-		if ( changed & 0x30 )
-			set_prg_bank( 0, bank_32k, (bank >> 4) & 3 );
-	}
-};
-
-// AOROM
-
-class Mapper_Aorom : public Nes_Mapper {
-	byte bank;
-public:
-	Mapper_Aorom() : Nes_Mapper( "AOROM", &bank, 1 ) { }
-	
-	void reset()
-	{
-		bank = 0;
-		apply_mapping();
-	}
-	
-	void apply_mapping()
-	{
-		int b = bank;
-		bank = ~b;
-		write( 0, 0, b );
-	}
-	
-	void write( nes_time_t, nes_addr_t addr, int data )
-	{
-		int changed = bank ^ data;
-		bank = data;
-		if ( changed & 0x10 )
-			mirror_single( (bank >> 4) & 1 );
-		
-		if ( changed & 0x0f )
-			set_prg_bank( 0, bank_32k, bank & 7 );
-	}
-};
-	
-// Camerica
-
-class Mapper_Camerica : public Nes_Mapper {
-	byte regs [3];
-public:
-	Mapper_Camerica() : Nes_Mapper( "Camerica", regs, sizeof regs ) { }
-	
-	void reset()
-	{
-		regs [0] = 0;
-		regs [1] = 0;
-		regs [2] = 0;
-		set_prg_bank( 1, bank_16k, last_bank );
-		apply_mapping();
-	}
-	
-	void apply_mapping()
-	{
-		write( 0, 0xc000, regs [0] );
-		if ( regs [2] )
-			write( 0, 0x9000, regs [1] );
-	}
-	
-	void write( nes_time_t, nes_addr_t addr, int data )
-	{
-		if ( addr >= 0xc000 )
-		{
-			regs [0] = data;
-			set_prg_bank( 0, bank_16k, data );
-		}
-		else if ( (addr & 0xf000) == 0x9000 )
-		{
-			regs [1] = data;
-			regs [2] = true;
-			mirror_single( (data >> 4) & 1 );
-		}
-	}
-};
-
-// CNROM
-
-class Mapper_Cnrom : public Nes_Mapper {
-	byte bank;
-public:
-	Mapper_Cnrom() : Nes_Mapper( "CNROM", &bank, 1 ) { }
-	
-	void reset()
-	{
-		bank = 0;
-		apply_mapping();
-	}
-	
-	void apply_mapping()
-	{
-		write( 0, 0, bank );
-	}
-	
-	void write( nes_time_t, nes_addr_t addr, int data )
-	{
-		bank = data;
-		set_chr_bank( 0, bank_8k, bank & 7 );
-	}
-};
-
-// make_mapper
-
-Nes_Mapper* make_mapper( int code, Nes_Emu* emu )
+void Nes_Mapper::set_prg_bank( nes_addr_t addr, bank_size_t bs, int bank )
 {
-	Nes_Mapper* mapper = NULL;
+	require( addr >= 0x2000 ); // can't remap low-memory
 	
-	switch ( code )
+	int bank_size = 1 << bs;
+	require( addr % bank_size == 0 ); // must be aligned
+	
+	int bank_count = rom_->prg_size() >> bs;
+	if ( bank < 0 )
+		bank += bank_count;
+	
+	if ( bank >= bank_count )
 	{
-		case 0:
-			mapper = BLARGG_NEW Mapper_None;
-			break;
-		
-		case 1:
-			mapper = Nes_Mapper::make_mmc1();
-			break;
-		
-		case 2:
-			mapper = BLARGG_NEW Mapper_Unrom;
-			break;
-		
-		case 3:
-			mapper = BLARGG_NEW Mapper_Cnrom;
-			break;
-		
-		case 4:
-			mapper = Nes_Mapper::make_mmc3();
-			break;
-		
-		case 5:
-			mapper = Nes_Mapper::make_mmc5();
-			break;
-		
-		case 7:
-			mapper = BLARGG_NEW Mapper_Aorom;
-			break;
-		
-	#if NES_EMU_ENABLE_VRC6
-		case 24:
-			mapper = Nes_Mapper::make_vrc6a();
-			break;
-		
-		case 26:
-			mapper = Nes_Mapper::make_vrc6b();
-			break;
-	#endif
-	
-		case 34:
-			mapper = BLARGG_NEW Mapper_Nina1;
-			break;
-		
-		case 66:
-			mapper = BLARGG_NEW Mapper_Gnrom;
-			break;
-		
-		case 71:
-			mapper = BLARGG_NEW Mapper_Camerica;
-			break;
-		
-		default:
-			return NULL;
+		check( !(rom_->prg_size() & (rom_->prg_size() - 1)) ); // ensure PRG size is power of 2
+		bank %= bank_count;
 	}
+	
+	emu().cpu.map_code( addr, bank_size, rom_->prg() + (bank << bs) );
+	
+	if ( unsigned (addr - 0x6000) < 0x2000 )
+		emu().cpu.map_memory( addr, bank_size, Nes_Emu::read_rom, Nes_Emu::write_unmapped );
+}
+
+void Nes_Mapper::set_chr_bank( nes_addr_t addr, bank_size_t bs, int bank )
+{
+	emu().sync_ppu(); 
+	emu().get_ppu().set_chr_bank( addr, 1 << bs, bank << bs );
+}
+
+void Nes_Mapper::mirror_manual( int page0, int page1, int page2, int page3 )
+{
+	emu().sync_ppu(); 
+	emu().get_ppu().set_nt_banks( page0, page1, page2, page3 );
+}
+
+#ifndef NDEBUG
+int Nes_Mapper::handle_bus_conflict( nes_addr_t addr, int data )
+{
+	if ( emu().cpu.get_code( addr ) [0] != data )
+		dprintf( "Mapper write had bus conflict\n" );
+	return data;
+}
+#endif
+
+// Mapper registration
+
+int const max_mappers = 32;
+Nes_Mapper::mapping_t Nes_Mapper::mappers [max_mappers] =
+{
+	{ 0, Nes_Mapper::make_nrom },
+	{ 1, Nes_Mapper::make_mmc1 },
+	{ 2, Nes_Mapper::make_unrom },
+	{ 3, Nes_Mapper::make_cnrom },
+	{ 4, Nes_Mapper::make_mmc3 },
+	{ 7, Nes_Mapper::make_aorom }
+};
+static int mapper_count = 6; // to do: keep synchronized with pre-supplied mappers above
+
+Nes_Mapper::creator_func_t Nes_Mapper::get_mapper_creator( int code )
+{
+	for ( int i = 0; i < mapper_count; i++ )
+	{
+		if ( mappers [i].code == code )
+			return mappers [i].func;
+	}
+	return NULL;
+}
+
+void Nes_Mapper::register_mapper( int code, creator_func_t func )
+{
+	// Catch attempted registration of a different creation function for same mapper code
+	require( !get_mapper_creator( code ) || get_mapper_creator( code ) == func );
+	require( mapper_count < max_mappers ); // fixed liming on number of registered mappers
+	
+	mapping_t& m = mappers [mapper_count++];
+	m.code = code;
+	m.func = func;
+}
+
+Nes_Mapper* Nes_Mapper::create( Nes_Rom const* rom, Nes_Emu* emu )
+{
+	Nes_Mapper::creator_func_t func = get_mapper_creator( rom->mapper_code() );
+	if ( !func )
+		return NULL;
 	
 	// to do: out of memory will be reported as unsupported mapper
-	
-	mapper->emu_ = emu;
-	
+	Nes_Mapper* mapper = func();
+	if ( mapper )
+	{
+		mapper->rom_ = rom;
+		mapper->emu_ = emu;
+	}
 	return mapper;
 }
 

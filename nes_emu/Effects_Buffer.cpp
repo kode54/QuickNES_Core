@@ -1,5 +1,5 @@
 
-// Game_Music_Emu 0.2.5. http://www.slack.net/~ant/libs/
+// Game_Music_Emu 0.2.4. http://www.slack.net/~ant/libs/
 
 #include "Effects_Buffer.h"
 
@@ -33,12 +33,12 @@ BOOST_STATIC_ASSERT( (reverb_size & reverb_mask) == 0 ); // must be power of 2
 
 Effects_Buffer::config_t::config_t()
 {
-	pan_1 = 0.0;
-	pan_2 = 0.0;
+	pan_1 = -0.15;
+	pan_2 = 0.15;
 	reverb_delay = 88;
-	reverb_level = 0.10;
+	reverb_level = 0.12;
 	echo_delay = 61;
-	echo_level = 0.12;
+	echo_level = 0.10;
 	delay_variance = 18;
 	effects_enabled = false;
 }
@@ -70,15 +70,13 @@ blargg_err_t Effects_Buffer::sample_rate( long rate, int msec )
 	if ( !echo_buf )
 	{
 		echo_buf = BLARGG_NEW blip_sample_t [echo_size];
-		if ( !echo_buf )
-			return "Out of memory";
+		BLARGG_CHECK_ALLOC( echo_buf );
 	}
 	
 	if ( !reverb_buf )
 	{
 		reverb_buf = BLARGG_NEW blip_sample_t [reverb_size];
-		if ( !reverb_buf )
-			return "Out of memory";
+		BLARGG_CHECK_ALLOC( reverb_buf );
 	}
 	
 	for ( int i = 0; i < buf_count; i++ )
@@ -123,7 +121,8 @@ inline int pin_range( int n, int max, int min = 0 )
 void Effects_Buffer::config( const config_t& cfg )
 {
 	// clear echo and reverb buffers
-	if ( !config_.effects_enabled && cfg.effects_enabled && echo_buf ) {
+	if ( !config_.effects_enabled && cfg.effects_enabled && echo_buf )
+	{
 		memset( echo_buf, 0, echo_size * sizeof (blip_sample_t) );
 		memset( reverb_buf, 0, reverb_size * sizeof (blip_sample_t) );
 	}
@@ -167,7 +166,8 @@ void Effects_Buffer::config( const config_t& cfg )
 				o.left   = &bufs [3];
 				o.right  = &bufs [4];
 			}
-			else {
+			else
+			{
 				o.center = &bufs [2];
 				o.left   = &bufs [5];
 				o.right  = &bufs [6];
@@ -232,23 +232,28 @@ long Effects_Buffer::read_samples( blip_sample_t* out, long total_samples )
 		int active_bufs = buf_count;
 		long count = remain;
 		
-		if ( effect_remain ) {
+		if ( effect_remain )
+		{
 			if ( count > effect_remain )
 				count = effect_remain;
 			
-			if ( stereo_remain ) {
+			if ( stereo_remain )
+			{
 				mix_enhanced( out, count );
 			}
-			else {
+			else
+			{
 				mix_mono_enhanced( out, count );
 				active_bufs = 3;
 			}
 		}
-		else if ( stereo_remain ) {
+		else if ( stereo_remain )
+		{
 			mix_stereo( out, count );
 			active_bufs = 3; 
 		}
-		else {
+		else
+		{
 			mix_mono( out, count );
 			active_bufs = 1; 
 		}
@@ -264,7 +269,8 @@ long Effects_Buffer::read_samples( blip_sample_t* out, long total_samples )
 		if ( effect_remain < 0 )
 			effect_remain = 0;
 		
-		for ( int i = 0; i < buf_count; i++ ) {
+		for ( int i = 0; i < buf_count; i++ )
+		{
 			if ( i < active_bufs )
 				bufs [i].remove_samples( count );
 			else
@@ -299,12 +305,14 @@ void Effects_Buffer::mix_mono( blip_sample_t* out, long count )
 		out += 4;
 	}
 	
-	if ( count & 1 ) {
+	if ( count & 1 )
+	{
 		int s = c.read();
 		c.next( shift );
 		out [0] = s;
 		out [1] = s;
-		if ( (BOOST::int16_t) s != s ) {
+		if ( (BOOST::int16_t) s != s )
+		{
 			s = 0x7FFF - (s >> 24);
 			out [0] = s;
 			out [1] = s;
@@ -321,7 +329,8 @@ void Effects_Buffer::mix_stereo( blip_sample_t* out, long count )
 	Blip_Reader c;
 	int shift = c.begin( bufs [0] );
 	
-	while ( count-- ) {
+	while ( count-- )
+	{
 		int cs = c.read();
 		c.next( shift );
 		int left = cs + l.read();

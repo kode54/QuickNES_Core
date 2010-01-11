@@ -1,7 +1,7 @@
 
 // NES snapshot for saving and restoring emulator state
 
-// Nes_Emu 0.5.0. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.5.6. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
 
 #ifndef NES_SNAPSHOT_H
 #define NES_SNAPSHOT_H
@@ -104,13 +104,12 @@ private:
 	joypad_state_t joypad;
 	bool joypad_valid;
 	
-	apu_state_t apu;
+	apu_snapshot_t apu;
 	bool apu_valid;
 	
 	ppu_state_t ppu;
 	bool ppu_valid;
 	
-	int mapper_size;
 	mapper_state_t mapper;
 	bool mapper_valid;
 	
@@ -130,7 +129,7 @@ private:
 	int chr_size;
 	
 	friend class Nes_Emu;
-	friend class Nes_Ppu;
+	friend class Nes_Ppu_Impl;
 };
 
 inline Nes_Snapshot const& Nes_Snapshot_Reader::snapshot() const

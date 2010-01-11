@@ -1,5 +1,5 @@
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/
 
 #include "Nes_Rewinder.h"
 
@@ -20,6 +20,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
 #include BLARGG_SOURCE_BEGIN
 
+// If true, always keep recent frame images in graphics buffer. Reduces overall
+// performance by about 33% on my machine, due to the frame buffer not staying in the cache.
+bool const quick_reverse = false;
+
 Nes_Rewinder::Nes_Rewinder( frame_count_t snapshot_period ) : recorder( snapshot_period )
 {
 	pixels = NULL;
@@ -34,10 +38,13 @@ Nes_Rewinder::~Nes_Rewinder()
 
 blargg_err_t Nes_Rewinder::init()
 {
-	require( !frames );
-	
-	frames = BLARGG_NEW frame_t [frames_size];
-	BLARGG_CHECK_ALLOC( frames );
+	if ( !frames )
+	{
+		BLARGG_RETURN_ERR( recorder::init() );
+		
+		frames = BLARGG_NEW frame_t [frames_size];
+		BLARGG_CHECK_ALLOC( frames );
+	}
 	
 	return blargg_success;
 }
@@ -118,16 +125,17 @@ inline void Nes_Rewinder::set_output( int index )
 	recorder::set_pixels( pixels + index * frame_height * row_bytes, row_bytes );
 }
 
-void Nes_Rewinder::frame_rendered( int index )
+void Nes_Rewinder::frame_rendered( int index, bool using_buffer )
 {
 	frame_t& frame = frames [index];
 	if ( recorder::frames_emulated() > 0 )
 	{
-		for ( int i = 0; i < palette_size; i++ )
+		frame.palette_size = recorder::palette_size();
+		for ( int i = frame.palette_size; i--; )
 			frame.palette [i] = recorder::palette_entry( i );
 		frame.sample_count = recorder::read_samples( frame.samples, frame.max_samples );
 	}
-	else if ( pixels )
+	else if ( pixels && using_buffer )
 	{
 		int old_index = (index + frames_size - 1) % frames_size;
 		
@@ -150,14 +158,17 @@ blargg_err_t Nes_Rewinder::next_frame( int joypad, int joypad2 )
 		clear_reverse();
 	}
 	
-	current_frame = recorder::tell() % frames_size;
+	current_frame = 0;
+	if ( quick_reverse )
+	{
+		current_frame = recorder::tell() % frames_size;
+		if ( buffer_scrambled )
+			buffer_scrambled--;
+	}
 	set_output( current_frame );
 	
 	BLARGG_RETURN_ERR( recorder::next_frame( joypad, joypad2 ) );
-	frame_rendered( current_frame );
-	
-	if ( buffer_scrambled )
-		buffer_scrambled--;
+	frame_rendered( current_frame, quick_reverse );
 	
 	return blargg_success;
 }
@@ -192,7 +203,7 @@ void Nes_Rewinder::play_frame_( int index )
 	{
 		set_output( index );
 		recorder::play_frame_();
-		frame_rendered( index );
+		frame_rendered( index, true );
 	}
 }
 

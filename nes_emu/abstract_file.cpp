@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 /* Copyright (C) 2005 by Shay Green. Permission is hereby granted, free of
 charge, to any person obtaining a copy of this software module and associated
@@ -20,6 +21,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+// to do: remove?
 #ifndef RAISE_ERROR
 	#define RAISE_ERROR( str ) return str
 #endif
@@ -214,35 +216,63 @@ void Std_File_Writer::close()
 
 // Mem_Writer
 
-Mem_Writer::Mem_Writer( void* p, long s, int b ) :
-	out( p ),
-	remain_( s ),
-	ignore_excess( b )
+Mem_Writer::Mem_Writer( void* p, long s, int b )
 {
+	data_ = (char*) p;
+	size_ = 0;
+	allocated = s;
+	mode = b ? ignore_excess : fixed;
+}
+
+Mem_Writer::Mem_Writer()
+{
+	data_ = NULL;
+	size_ = 0;
+	allocated = 0;
+	mode = expanding;
+}
+
+Mem_Writer::~Mem_Writer()
+{
+	if ( mode == expanding )
+		free( data_ );
 }
 
 error_t Mem_Writer::write( const void* p, long s )
 {
-	if ( s > remain_ )
+	long remain = allocated - size_;
+	if ( s > remain )
 	{
-		// to do: re-implement with growing memory
-		if ( !ignore_excess )
+		if ( mode == fixed )
 			RAISE_ERROR( "Tried to write more data than expected" );
-		s = remain_;
+		
+		if ( mode == ignore_excess )
+		{
+			s = remain;
+		}
+		else // expanding
+		{
+			long new_allocated = size_ + s;
+			new_allocated += (new_allocated >> 1) + 2048;
+			void* p = realloc( data_, new_allocated );
+			if ( !p )
+				RAISE_ERROR( "Out of memory" );
+			data_ = (char*) p;
+			allocated = new_allocated;
+		}
 	}
-	remain_ -= s;
-	memcpy( out, p, s );
-	out = (char*) out + s;
+	
+	assert( size_ + s <= allocated );
+	memcpy( data_ + size_, p, s );
+	size_ += s;
+	
 	return NULL;
-}
-
-long Mem_Writer::remain() const {
-	return remain_;
 }
 
 // Null_Writer
 
-error_t Null_Writer::write( const void*, long ) {
+error_t Null_Writer::write( const void*, long )
+{
 	return NULL;
 }
 

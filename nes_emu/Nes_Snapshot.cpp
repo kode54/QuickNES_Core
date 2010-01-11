@@ -1,5 +1,5 @@
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/
 
 #include "Nes_Snapshot.h"
 
@@ -122,7 +122,7 @@ blargg_err_t Nes_Snapshot::write_blocks( Nes_File_Writer& out ) const
 	
 	if ( apu_valid )
 	{
-		apu_state_t s = apu;
+		apu_snapshot_t s = apu;
 		BLARGG_RETURN_ERR( write_nes_state( out, s ) );
 	}
 	
@@ -133,7 +133,7 @@ blargg_err_t Nes_Snapshot::write_blocks( Nes_File_Writer& out ) const
 	}
 	
 	if ( mapper_valid )
-		BLARGG_RETURN_ERR( out.write_block( 'MAPR', &mapper, mapper_size ) );
+		BLARGG_RETURN_ERR( out.write_block( 'MAPR', mapper.data, mapper.size ) );
 	
 	if ( ram_valid )
 		BLARGG_RETURN_ERR( out.write_block( 'LRAM', ram, sizeof ram ) );
@@ -249,8 +249,8 @@ blargg_err_t Nes_Snapshot::read_blocks( Nes_File_Reader& in )
 				break;
 			
 			case 'MAPR':
-				mapper_size = in.remain();
-				BLARGG_RETURN_ERR( in.read_block_data( &mapper, sizeof mapper ) );
+				mapper.size = in.remain();
+				BLARGG_RETURN_ERR( in.read_block_data( mapper.data, sizeof mapper.data ) );
 				mapper_valid = true;
 				break;
 			

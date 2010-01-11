@@ -1,7 +1,7 @@
 
 // NES video recorder that can record and play back NES game play
 
-// Nes_Emu 0.5.0. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.5.6. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
 
 #ifndef NES_RECORDER_H
 #define NES_RECORDER_H
@@ -24,7 +24,6 @@ public:
 	// higher than 48kHz. Optionally specify a sound buffer to use instead of
 	// the built-in default mono buffer.
 	blargg_err_t set_sample_rate( long );
-	blargg_err_t set_sample_rate_nonlinear( long );
 	blargg_err_t set_sample_rate( long, Multi_Buffer* );
 	// errors: out of memory
 	
@@ -72,7 +71,7 @@ public:
 	// one call.
 	long read_samples( short* out, long max_samples );
 	
-// Additional optional functionality
+// Additional optional features (can be ignored without any problem)
 	
 // Sound generation
 	
@@ -191,12 +190,13 @@ public:
 	int frames_emulated() const;
 	
 	void set_pixels( void*, long );
+	
+	// to do: document
+	blargg_err_t init();
 private:
 	// Not available, even though they are in Nes_Emu
 	blargg_err_t open_rom( Nes_Rom const* );
 	nes_time_t emulate_frame( unsigned long joypad1, unsigned long joypad2 );
-	Nes_Apu& get_apu();
-	class Nes_Vrc6* get_vrc6();
 	void set_timestamp( frame_count_t );
 	frame_count_t timestamp() const;
 	void close_rom();
@@ -211,7 +211,6 @@ protected:
 private:
 	Multi_Buffer* sound_buf;
 	Multi_Buffer* default_sound_buf;
-	Multi_Buffer* nonlinearizer;
 	nes_time_t sound_buf_end; // non-zero when skipping frames and buffer contains garbage
 	Nes_Rom rom;
 	BOOST::uint8_t* pixels;
@@ -219,7 +218,6 @@ private:
 	int frames_emulated_;
 	int channel_count_;
 	equalizer_t equalizer_;
-	blargg_err_t init();
 	
 	Nes_Film default_film;
 	frame_count_t circular_duration;
@@ -236,6 +234,7 @@ private:
 	void render_frame_( joypad_t joypad, bool playing );
 	Nes_Snapshot const* nearest_snapshot( frame_count_t ) const;
 	void load_snapshot_( Nes_Snapshot const& );
+	void clear_sound_buf();
 	
 	// to do: make adjustable at init time so it can be made to match
 	// Nes_Rewinder's frame count (once that also becomes adjustable)

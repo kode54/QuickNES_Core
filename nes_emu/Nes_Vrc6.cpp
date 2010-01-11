@@ -23,10 +23,15 @@ Nes_Vrc6::Nes_Vrc6()
 	reset();
 }
 
+Nes_Vrc6::~Nes_Vrc6()
+{
+}
+
 void Nes_Vrc6::reset()
 {
 	last_time = 0;
-	for ( int i = 0; i < osc_count; i++ ) {
+	for ( int i = 0; i < osc_count; i++ )
+	{
 		Vrc6_Osc& osc = oscs [i];
 		for ( int j = 0; j < reg_count; j++ )
 			osc.regs [j] = 0;
@@ -37,17 +42,14 @@ void Nes_Vrc6::reset()
 	}
 }
 
-Nes_Vrc6::~Nes_Vrc6() {
-}
-
 void Nes_Vrc6::volume( double v )
 {
-	v *= 0.0967 * 2;
-	saw_synth.volume( v );
-	square_synth.volume( v * 0.5 );
+	double const factor = 0.0967 * 2;
+	saw_synth.volume_unit( factor / 31 * v );
+	square_synth.volume_unit( factor * 0.5 / 15 * v );
 }
 
-void Nes_Vrc6::treble_eq( const blip_eq_t& eq )
+void Nes_Vrc6::treble_eq( blip_eq_t const& eq )
 {
 	saw_synth.treble_eq( eq );
 	square_synth.treble_eq( eq );
@@ -61,6 +63,7 @@ void Nes_Vrc6::output( Blip_Buffer* buf )
 
 void Nes_Vrc6::run_until( nes_time_t time )
 {
+	require( time >= last_time );
 	run_square( oscs [0], time );
 	run_square( oscs [1], time );
 	run_saw( time );
@@ -74,20 +77,17 @@ void Nes_Vrc6::write_osc( nes_time_t time, int osc_index, int reg, int data )
 	
 	run_until( time );
 	oscs [osc_index].regs [reg] = data;
-	
-	// to do: remove? this messed up volume envelope in Akumajou Densetsu track 22
-	//if ( osc_index == 2 && reg == 2 )
-	//  oscs [2].amp = 0;
 }
 
 void Nes_Vrc6::end_frame( nes_time_t time )
 {
-	run_until( time );
+	if ( time > last_time )
+		run_until( time );
 	last_time -= time;
 	assert( last_time >= 0 );
 }
 
-void Nes_Vrc6::save_state( vrc6_sound_state_t* out ) const
+void Nes_Vrc6::save_snapshot( vrc6_snapshot_t* out ) const
 {
 	out->saw_amp = oscs [2].amp;
 	for ( int i = 0; i < osc_count; i++ )
@@ -101,7 +101,7 @@ void Nes_Vrc6::save_state( vrc6_sound_state_t* out ) const
 	}
 }
 
-void Nes_Vrc6::load_state( vrc6_sound_state_t const& in )
+void Nes_Vrc6::load_snapshot( vrc6_snapshot_t const& in )
 {
 	reset();
 	oscs [2].amp = in.saw_amp;
@@ -134,7 +134,8 @@ void Nes_Vrc6::run_square( Vrc6_Osc& osc, nes_time_t end_time )
 	int duty = ((osc.regs [0] >> 4) & 7) + 1;
 	int delta = ((gate || osc.phase < duty) ? volume : 0) - osc.last_amp;
 	nes_time_t time = last_time;
-	if ( delta ) {
+	if ( delta )
+	{
 		osc.last_amp += delta;
 		square_synth.offset( time, delta, output );
 	}
@@ -148,14 +149,17 @@ void Nes_Vrc6::run_square( Vrc6_Osc& osc, nes_time_t end_time )
 		{
 			int phase = osc.phase;
 			
-			do {
+			do
+			{
 				phase++;
-				if ( phase == 16 ) {
+				if ( phase == 16 )
+				{
 					phase = 0;
 					osc.last_amp = volume;
 					square_synth.offset( time, volume, output );
 				}
-				if ( phase == duty ) {
+				if ( phase == duty )
+				{
 					osc.last_amp = 0;
 					square_synth.offset( time, -volume, output );
 				}
@@ -195,14 +199,17 @@ void Nes_Vrc6::run_saw( nes_time_t end_time )
 			int period = osc.period() * 2;
 			int phase = osc.phase;
 			
-			do {
-				if ( --phase == 0 ) {
+			do
+			{
+				if ( --phase == 0 )
+				{
 					phase = 7;
 					amp = 0;
 				}
 				
 				int delta = (amp >> 3) - last_amp;
-				if ( delta ) {
+				if ( delta )
+				{
 					last_amp = amp >> 3;
 					saw_synth.offset( time, delta, output );
 				}

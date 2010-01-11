@@ -1,7 +1,7 @@
 
 // "Film" on which to record NES movies, with "endless loop" option
 
-// Nes_Emu 0.5.0. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.5.6. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
 
 #ifndef NES_FILM_H
 #define NES_FILM_H
@@ -42,7 +42,7 @@ public:
 	// True if recording contains frame beginning at timestamp
 	bool contains_frame( frame_count_t t ) const { return begin() <= t && t < end(); }
 	
-	// Constrain timestamp to recorded range, or 0 if film is empty.
+	// Constrain timestamp to recorded range, or return unchanged if film is empty
 	frame_count_t constrain( frame_count_t ) const;
 	
 	// Trim to subset of recording
@@ -83,8 +83,6 @@ public:
 	// to do: redefine to return a reference (and thus no error condition)
 	// Pointer to nearest snapshot at or before timestamp, or NULL if none
 	Nes_Snapshot const* nearest_snapshot( frame_count_t ) const;
-	
-	// to do: support multiple joypads
 	
 	// Joypad data for frame beginning at timestamp
 	typedef unsigned long joypad_t;

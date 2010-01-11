@@ -1,5 +1,5 @@
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/
 
 #include "Nes_Mapper.h"
 
@@ -19,167 +19,133 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
 #include BLARGG_SOURCE_BEGIN
 
-// to do: time scanline IRQ properly. currently it's quite badly handled.
+// 264 or less breaks Gargoyle's Quest II
+// 267 or less breaks Magician
+int const irq_fine_tune = 268;
+nes_time_t const first_scanline = 20 * scanline_len + irq_fine_tune;
+nes_time_t const last_scanline = first_scanline + 240 * scanline_len;
 
 class Mapper_Mmc3 : public Nes_Mapper, mmc3_state_t {
-	nes_time_t irq_time;
 	nes_time_t next_time;
+	int counter_just_clocked; // used only for debugging
 public:
-	Mapper_Mmc3() : Nes_Mapper( "MMC3",
-			STATIC_CAST(mmc3_state_t*) (this), sizeof (mmc3_state_t) ) { }
+	Mapper_Mmc3()
+	{
+		mmc3_state_t* state = this;
+		register_state( state, sizeof *state );
+	}
 	
-	void update_mirroring();
+	virtual void reset_state()
+	{
+		static byte initial_banks [8] = { 0, 2, 4, 5, 6, 7, 0, 1 };
+		memcpy( banks, initial_banks, sizeof banks );
+		
+		counter_just_clocked = 0;
+		next_time = 0;
+		mirror = 1;
+		if ( rom().mirroring() & 1 )
+		{
+			mirror = 0;
+			dprintf( "ROM specified vertical mirroring\n" );
+		}
+	}
+	
 	void update_chr_banks();
 	void update_prg_banks();
+	void write_irq( nes_addr_t addr, int data );
+	void write( nes_time_t, nes_addr_t, int );
 	
-	void reset()
-	{
-		memset( banks, 0, sizeof banks );
-		mode = 0;
-		mirror = 1; // to do: correct?
-		sram_mode = 0;
-		irq_ctr = 0;
-		irq_latch = 0;
-		irq_on = 0;
-		next_time = 0;
-		irq_time = no_irq;
-		banks [7] = 1;
-		set_prg_bank( 3, bank_8k, last_bank );
-		apply_mapping();
-	}
+	void start_frame() { next_time = first_scanline; }
 	
-	void start_frame()
+	virtual void apply_mapping()
 	{
-		irq_time = no_irq;
-		next_time = 341 * 20 + 280;
-	}
-	
-	void apply_mapping()
-	{
-		emu()->enable_sram( sram_mode & 0x80, sram_mode & 0x40 );
-		update_mirroring();
+		enable_sram( sram_mode & 0x80, sram_mode & 0x40 );
+		write( 0, 0xa000, mirror );
 		update_chr_banks();
 		update_prg_banks();
 		start_frame();
 	}
 	
-	void run_until( nes_time_t end_time )
+	void clock_counter( nes_time_t time )
 	{
-		end_time *= 3;
-		while ( next_time < end_time )
+		if ( counter_just_clocked )
+			counter_just_clocked--;
+		
+		if ( !irq_ctr-- )
 		{
-			if ( irq_ctr-- == 0 )
-			{
-				irq_ctr = irq_latch;
-				irq_time = next_time / 3 + 1;
-			}
-			next_time += 341;
+			irq_ctr = irq_latch;
+			//if ( !irq_latch )
+			//  dprintf( "MMC3 IRQ counter reloaded with 0\n" );
+		}
+		
+		//dprintf( "%6d MMC3 IRQ clocked\n", time / ppu_overclock );
+		if ( irq_ctr == 0 )
+		{
+			//if ( irq_enabled && !irq_flag )
+			//  dprintf( "%6d MMC3 IRQ triggered: %f\n", time / ppu_overclock, time / scanline_len.0 - 20 );
+			irq_flag = irq_enabled;
 		}
 	}
 	
-	void end_frame( nes_time_t end_time )
+	virtual void run_until( nes_time_t );
+	
+	virtual void a12_clocked( nes_time_t time )
+	{
+		run_until( time );
+		clock_counter( time * ppu_overclock );
+		if ( irq_enabled )
+			irq_changed();
+	}
+	
+	virtual void end_frame( nes_time_t end_time )
 	{
 		run_until( end_time );
 		start_frame();
 	}
 	
-	nes_time_t next_irq( nes_time_t present )
+	virtual nes_time_t next_irq( nes_time_t present )
 	{
-		if ( !emu()->get_ppu().bg_enabled() )
+		run_until( present );
+		
+		if ( !irq_enabled )
 			return no_irq;
 		
-		if ( !irq_on || (irq_ctr == 0 && irq_latch == 0) )
+		if ( irq_flag )
+			return 0;
+		
+		if ( !ppu_enabled() )
 			return no_irq;
 		
-		if ( irq_time + 12 < present )
-			irq_time = no_irq;
+		int remain = irq_ctr - 1;
+		if ( remain < 0 )
+			remain = irq_latch;
 		
-		if ( irq_time != no_irq )
-			return irq_time;
+		long time = remain * 341L + next_time;
+		if ( time > last_scanline )
+			return no_irq;
 		
-		return (irq_ctr * 341L + next_time) / 3 + 1;
-	}
-	
-	void write( nes_time_t time, nes_addr_t addr, int data )
-	{
-		if ( addr & ~0xe001 )
-			dprintf( "Wrote to mirrored MMC3 register\n" );
-		
-		if ( addr >= 0xc000 )
-		{
-			run_until( time );
-			switch ( addr & 0xe001 )
-			{
-				case 0xc000:
-					irq_ctr = data;
-					break;
-				
-				case 0xc001:
-					irq_latch = data;
-					break;
-				
-				case 0xe000:
-					irq_on = false;
-					break;
-				
-				case 0xe001:
-					irq_on = true;
-					break;
-			}
-			emu()->irq_changed();
-		}
-		else switch ( addr & 0xe001 )
-		{
-			case 0x8000: {
-				int changed = mode ^ data;
-				mode = data;
-				// avoid unnecessary bank updates
-				if ( changed & 0x80 )
-					update_chr_banks();
-				if ( changed & 0x40 )
-					update_prg_banks();
-				break;
-			}
-			
-			case 0x8001: {
-				int bank = mode & 7;
-				banks [bank] = data;
-				if ( bank < 6 )
-					update_chr_banks();
-				else
-					update_prg_banks();
-				break;
-			}
-			
-			case 0xa000:
-				mirror = data;
-				update_mirroring();
-				break;
-			
-			case 0xa001:
-				sram_mode = data;
-				emu()->enable_sram( data & 0x80, data & 0x40 );
-				break;
-		}
+		return time / ppu_overclock + 1;
 	}
 };
 
-void Mapper_Mmc3::update_mirroring()
+void Mapper_Mmc3::run_until( nes_time_t end_time )
 {
-	if ( !(initial_mirroring & 0x08) )
+	bool bg_enabled = ppu_enabled();
+	
+	end_time *= ppu_overclock;
+	while ( next_time < end_time && next_time <= last_scanline )
 	{
-		if ( mirror & 1 )
-			mirror_horiz();
-		else
-			mirror_vert();
+		if ( bg_enabled )
+			clock_counter( next_time );
+		next_time += scanline_len;
 	}
 }
 
 void Mapper_Mmc3::update_chr_banks()
 {
-	int chr_xor = (mode & 0x80) << 5;
-	set_chr_bank(    0x0 ^ chr_xor, bank_2k, banks [0] >> 1 );
-	set_chr_bank(  0x800 ^ chr_xor, bank_2k, banks [1] >> 1 );
+	int chr_xor = (mode >> 7 & 1) * 0x1000;
+	set_chr_bank( 0x0000 ^ chr_xor, bank_2k, banks [0] >> 1 );
+	set_chr_bank( 0x0800 ^ chr_xor, bank_2k, banks [1] >> 1 );
 	set_chr_bank( 0x1000 ^ chr_xor, bank_1k, banks [2] );
 	set_chr_bank( 0x1400 ^ chr_xor, bank_1k, banks [3] );
 	set_chr_bank( 0x1800 ^ chr_xor, bank_1k, banks [4] );
@@ -188,10 +154,90 @@ void Mapper_Mmc3::update_chr_banks()
 
 void Mapper_Mmc3::update_prg_banks()
 {
-	set_prg_bank( 1, bank_8k, banks [7] );
-	int bank_swap = (mode & 0x40 ? 2 : 0);
-	set_prg_bank( bank_swap ^ 2, bank_8k, last_bank - 1 );
-	set_prg_bank( bank_swap, bank_8k, banks [6] );
+	set_prg_bank( 0xA000, bank_8k, banks [7] );
+	nes_addr_t addr = 0x8000 + 0x4000 * (mode >> 6 & 1);
+	set_prg_bank( addr, bank_8k, banks [6] );
+	set_prg_bank( addr ^ 0x4000, bank_8k, last_bank - 1 );
+}
+
+void Mapper_Mmc3::write_irq( nes_addr_t addr, int data )
+{
+	switch ( addr & 0xE001 )
+	{
+	case 0xC000:
+		irq_latch = data;
+		break;
+	
+	case 0xC001:
+		if ( counter_just_clocked == 1 )
+			dprintf( "MMC3 IRQ counter pathological behavior triggered\n" );
+		counter_just_clocked = 2;
+		irq_ctr = 0;
+		break;
+	
+	case 0xE000:
+		irq_flag = false;
+		irq_enabled = false;
+		break;
+	
+	case 0xE001:
+		irq_enabled = true;
+		break;
+	}
+	if ( irq_enabled )
+		irq_changed();
+}
+
+void Mapper_Mmc3::write( nes_time_t time, nes_addr_t addr, int data )
+{
+	check( !(addr & ~0xe001) ); // writes to mirrored registers are rare
+	//dprintf( "%6d %02X->%04X\n", time, data, addr );
+	
+	switch ( addr & 0xE001 )
+	{
+	case 0x8000: {
+		int changed = mode ^ data;
+		mode = data;
+		// avoid unnecessary bank updates
+		if ( changed & 0x80 )
+			update_chr_banks();
+		if ( changed & 0x40 )
+			update_prg_banks();
+		break;
+	}
+	
+	case 0x8001: {
+		int bank = mode & 7;
+		banks [bank] = data;
+		if ( bank < 6 )
+			update_chr_banks();
+		else
+			update_prg_banks();
+		break;
+	}
+	
+	case 0xA000:
+		mirror = data;
+		if ( !(rom().mirroring() & 0x08) )
+		{
+			if ( mirror & 1 )
+				mirror_horiz();
+			else
+				mirror_vert();
+		}
+		break;
+	
+	case 0xA001:
+		sram_mode = data;
+		dprintf( "%02X->%04X\n", data, addr );
+		enable_sram( data & 0x80, data & 0x40 );
+		break;
+	
+	default:
+		run_until( time );
+		write_irq( addr, data );
+		break;
+	}
 }
 
 Nes_Mapper* Nes_Mapper::make_mmc3()

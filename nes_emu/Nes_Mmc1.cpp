@@ -1,5 +1,5 @@
 
-// Nes_Emu 0.5.0. http://www.slack.net/~ant/
+// Nes_Emu 0.5.6. http://www.slack.net/~ant/
 
 #include "Nes_Mapper.h"
 
@@ -18,42 +18,48 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
 #include BLARGG_SOURCE_BEGIN
 
-class Mapper_Mmc1 : public Nes_Mapper, private mmc1_state_t {
+class Mapper_Mmc1 : public Nes_Mapper, mmc1_state_t {
 public:
-	Mapper_Mmc1() : Nes_Mapper( "MMC1",
-			STATIC_CAST(mmc1_state_t*) (this), sizeof (mmc1_state_t) ) { }
-	
-	void reset()
+	Mapper_Mmc1()
 	{
-		regs [0] = 0x0f; // bits 4 of each might need to be set once 1024K ROM is supported
-		regs [1] = 0x0f;
-		regs [2] = 0x0f;
-		regs [3] = 0x00; // first bank is mapped in
-		bit = 0;
-		buf = 0;
-		apply_mapping();
+		mmc1_state_t* state = this;
+		register_state( state, sizeof *state );
+	}
+	
+	virtual void reset_state()
+	{
+		write( 0, 0, 0x80 );
 	}
 	
 	void register_changed( int );
 	
-	void apply_mapping()
+	virtual void apply_mapping()
 	{
+		enable_sram(); // early MMC1 always had SRAM enabled
 		register_changed( 0 );
 	}
 	
-	void write( nes_time_t, nes_addr_t addr, int data )
+	virtual void write( nes_time_t, nes_addr_t addr, int data )
 	{
 		if ( !(data & 0x80) )
 		{
 			buf |= (data & 1) << bit; 
 			bit++;
 			
-			if ( bit != 5 )
+			if ( bit < 5 )
 				return;
 			
-			int reg = (addr >> 13) & 3;
+			int reg = addr >> 13 & 3;
 			regs [reg] = buf & 0x1f;
 			register_changed( reg );
+		}
+		else
+		{
+			// to do: verify these values
+			regs [0] = 0x0f;
+			regs [1] = 0x0f;
+			regs [2] = 0x0f;
+			regs [3] = 0x00; // first bank is mapped in
 		}
 		
 		bit = 0;
@@ -76,7 +82,7 @@ void Mapper_Mmc1::register_changed( int reg )
 	}
 	
 	// CHR
-	if ( chr_is_rom && reg < 3 )
+	if ( reg < 3 && rom().chr_size() > 0 )
 	{
 		if ( regs [0] & 0x10 )
 		{
@@ -89,25 +95,21 @@ void Mapper_Mmc1::register_changed( int reg )
 		}
 	}
 	
-	// 1024K ROM bits aren't handled
-	check( chr_is_rom || !(regs [0] & 0x10) );
-//  check( !(regs [2] & 0x10) ); // lots of games set this bit
-	
 	// PRG
 	int bank = (regs [1] & 0x10) | (regs [3] & 0x0f);
 	if ( !(regs [0] & 0x08) )
 	{
-		set_prg_bank( 0, bank_32k, bank >> 1 );
+		set_prg_bank( 0x8000, bank_32k, bank >> 1 );
 	}
 	else if ( regs [0] & 0x04 )
 	{
-		set_prg_bank( 0, bank_16k, bank );
-		set_prg_bank( 1, bank_16k, bank | 0x0f );
+		set_prg_bank( 0x8000, bank_16k, bank );
+		set_prg_bank( 0xC000, bank_16k, bank | 0x0f );
 	}
 	else
 	{
-		set_prg_bank( 0, bank_16k, bank & ~0x0f );
-		set_prg_bank( 1, bank_16k, bank );
+		set_prg_bank( 0x8000, bank_16k, bank & ~0x0f );
+		set_prg_bank( 0xC000, bank_16k, bank );
 	}
 }
 

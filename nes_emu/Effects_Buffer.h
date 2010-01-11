@@ -1,7 +1,7 @@
 
 // Multi-channel effects buffer with panning, echo and reverb effects
 
-// Game_Music_Emu 0.2.5. Copyright (C) 2003-2005 Shay Green. GNU LGPL license.
+// Game_Music_Emu 0.2.4. Copyright (C) 2003-2005 Shay Green. GNU LGPL license.
 
 #ifndef EFFECTS_BUFFER_H
 #define EFFECTS_BUFFER_H

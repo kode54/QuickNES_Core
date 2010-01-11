@@ -1,13 +1,13 @@
 
 // NES file formats
 
-// Nes_Emu 0.5.0. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.5.6. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
 
 #ifndef NES_STATE_H
 #define NES_STATE_H
 
 #include "blargg_common.h"
-#include "abstract_file.h"
+#include "apu_snapshot.h"
 
 typedef long nes_tag_t;
 
@@ -19,12 +19,9 @@ nes_tag_t const snapshot_file_tag = 'NESS';
 
 nes_tag_t const movie_file_tag = 'NMOV';
 
-// Name of ROM in 8-bit characters (ASCII or whatever) with ".nes" etc *removed*,
+// Name of ROM in 8-bit characters (UTF-8 preferred) with ".nes" etc *removed*,
 // no NUL termination. Yes: "Castlevania (U)". No: "Strider (U).nes".
 nes_tag_t const rom_name_tag = 'romn';
-
-// name of ROM in 16-bit Unicode, no NUL termination
-nes_tag_t const rom_unicode_name_tag = 'romu';
 
 struct nes_block_t
 {
@@ -76,12 +73,20 @@ struct joypad_state_t
 };
 BOOST_STATIC_ASSERT( sizeof (joypad_state_t) == 12 );
 
-int const max_mapper_state_size = 64;
+// Increase this (and let me know) if your mapper requires more state. This only
+// sets the size of the in-memory buffer; it doesn't affect the file format at all.
+int const max_mapper_state_size = 256;
 struct mapper_state_t
 {
-	byte state [max_mapper_state_size];
+	int size;
+	union {
+		double align;
+		byte data [max_mapper_state_size];
+	};
+	
+	void write( const void* p, unsigned long s );
+	int read( void* p, unsigned long s ) const;
 };
-BOOST_STATIC_ASSERT( sizeof (mapper_state_t) == max_mapper_state_size );
 
 struct cpu_state_t
 {
@@ -117,67 +122,6 @@ struct ppu_state_t
 };
 BOOST_STATIC_ASSERT( sizeof (ppu_state_t) == 12 + 0x20 );
 
-struct apu_state_t
-{
-	typedef byte env_t [3];
-	/*struct env_t {
-		byte delay;
-		byte env;
-		byte written;
-	};*/
-	
-	byte w40xx [0x14]; // $4000-$4013
-	byte w4015; // enables
-	byte w4017; // mode
-	BOOST::uint16_t delay;
-	byte step;
-	byte irq_flag;
-	
-	struct square_t {
-		BOOST::uint16_t delay;
-		env_t env;
-		byte length;
-		byte phase;
-		byte swp_delay;
-		byte swp_reset;
-		byte unused [1];
-	};
-	
-	square_t square1;
-	square_t square2;
-	
-	struct triangle_t {
-		BOOST::uint16_t delay;
-		byte length;
-		byte phase;
-		byte linear_counter;
-		byte linear_mode;
-	} triangle;
-	
-	struct noise_t {
-		BOOST::uint16_t delay;
-		env_t env;
-		byte length;
-		BOOST::uint16_t shift_reg;
-	} noise;
-	
-	struct dmc_t {
-		BOOST::uint16_t delay;
-		BOOST::uint16_t remain;
-		BOOST::uint16_t addr;
-		byte buf;
-		byte bits_remain;
-		byte bits;
-		byte buf_empty;
-		byte silence;
-		byte irq_flag;
-	} dmc;
-	
-	enum { tag = 'APUR' };
-	void swap();
-};
-BOOST_STATIC_ASSERT( sizeof (apu_state_t) == 72 );
-
 struct mmc1_state_t
 {
 	byte regs [4]; // current registers (5 bits each)
@@ -192,11 +136,12 @@ struct mmc3_state_t
 	byte mode;      // $8000
 	byte mirror;    // $a000
 	byte sram_mode; // $a001
-	byte irq_ctr;   // $c000
-	byte irq_latch; // $c001
-	byte irq_on;    // last write was to 0) $e000, 1) $e001
+	byte irq_ctr;   // internal counter
+	byte irq_latch; // $c000
+	byte irq_enabled;// last write was to 0) $e000, 1) $e001
+	byte irq_flag;
 };
-BOOST_STATIC_ASSERT( sizeof (mmc3_state_t) == 14 );
+BOOST_STATIC_ASSERT( sizeof (mmc3_state_t) == 15 );
 
 #endif
 

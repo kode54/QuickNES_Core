@@ -163,6 +163,14 @@ void Nes_Triangle::clock_linear_counter()
 		reg_written [3] = false;
 }
 
+inline int Nes_Triangle::calc_amp() const
+{
+	int amp = phase_range - phase;
+	if ( amp < 0 )
+		amp = phase - (phase_range + 1);
+	return amp;
+}
+
 void Nes_Triangle::run( nes_time_t time, nes_time_t end_time )
 {
 	if ( !output )
@@ -170,6 +178,10 @@ void Nes_Triangle::run( nes_time_t time, nes_time_t end_time )
 	
 	// to do: track phase when period < 3
 	// to do: Output 7.5 on dac when period < 2? More accurate, but results in more clicks.
+	
+	int delta = update_amp( calc_amp() );
+	if ( delta )
+		synth.offset( time, delta, output );
 	
 	time += delay;
 	const int timer_period = period() + 1;
@@ -204,6 +216,7 @@ void Nes_Triangle::run( nes_time_t time, nes_time_t end_time )
 		if ( volume < 0 )
 			phase += phase_range;
 		this->phase = phase;
+		last_amp = calc_amp();
  	}
 	delay = time - end_time;
 }
@@ -224,14 +237,14 @@ void Nes_Dmc::reset()
 	irq_enabled = false;
 	
 	Nes_Osc::reset();
-	period = 0x036;
+	period = 0x1ac;
 }
 
 void Nes_Dmc::recalc_irq()
 {
 	nes_time_t irq = Nes_Apu::no_irq;
 	if ( irq_enabled && length_counter )
-		irq = apu->last_time + delay +
+		irq = apu->last_dmc_time + delay +
 				((length_counter - 1) * 8 + bits_remain - 1) * nes_time_t (period) + 1;
 	if ( irq != next_irq ) {
 		next_irq = irq;
@@ -247,7 +260,7 @@ int Nes_Dmc::count_reads( nes_time_t time, nes_time_t* last_read ) const
 	if ( length_counter == 0 )
 		return 0; // not reading
 	
-	long first_read = apu->last_time + delay + long (bits_remain - 1) * period;
+	long first_read = next_read_time();
 	long avail = time - first_read;
 	if ( avail <= 0 )
 		return 0;
@@ -293,7 +306,10 @@ static const unsigned char dac_table [128] = {
 
 void Nes_Dmc::write_register( int addr, int data )
 {
-	if ( addr == 0 ) {
+	if ( addr == 0 )
+	{
+		//if ( period != dmc_period_table [pal_mode] [data & 15] )
+		//  dprintf( "DMC freq: %X\n", data & 15 );
 		period = dmc_period_table [pal_mode] [data & 15];
 		irq_enabled = (data & 0xc0) == 0x80; // enabled only if loop disabled
 		irq_flag &= irq_enabled;
@@ -441,7 +457,7 @@ void Nes_Noise::run( nes_time_t time, nes_time_t end_time )
 			// round to next multiple of period
 			time += (end_time - time + period - 1) / period * period;
 			
-			// approximate noise cycling while muted, by shuffling up noise register a bit
+			// approximate noise cycling while muted, by shuffling up noise register
 			// to do: precise muted noise cycling?
 			if ( !(regs [2] & mode_flag) ) {
 				int feedback = (noise << 13) ^ (noise << 14);
@@ -453,8 +469,8 @@ void Nes_Noise::run( nes_time_t time, nes_time_t end_time )
 			Blip_Buffer* const output = this->output;
 			
 			// using resampled time avoids conversion in synth.offset()
-			Blip_Buffer::resampled_time_t rperiod = output->resampled_duration( period );
-			Blip_Buffer::resampled_time_t rtime = output->resampled_time( time );
+			blip_resampled_time_t rperiod = output->resampled_duration( period );
+			blip_resampled_time_t rtime = output->resampled_time( time );
 			
 			int noise = this->noise;
 			int delta = amp * 2 - volume;
