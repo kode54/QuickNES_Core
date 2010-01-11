@@ -88,7 +88,7 @@ namespace musicmusic
 		memset(&ti,0,sizeof(ti));
 		
 		ti.cbSize = sizeof(ti);
-		ti.uFlags = TTF_SUBCLASS|TTF_TRANSPARENT|TTF_TRACK|TTF_ABSOLUTE;
+		ti.uFlags = /*TTF_SUBCLASS|*/TTF_TRANSPARENT|TTF_TRACK|TTF_ABSOLUTE;
 		ti.hwnd = wnd_host;
 		ti.hinst = ATL::_AtlBaseModule.GetResourceInstance();
 		ti.lpszText = const_cast<TCHAR *>(text);
@@ -398,6 +398,9 @@ namespace musicmusic
 			break;
 		case WM_MOUSEMOVE:
 			{
+				if ( m_last_mouse_position != lp )
+				{
+					m_last_mouse_position = lp;
 
 					POINT pt = {GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
 					if (m_dragging)
@@ -429,6 +432,7 @@ namespace musicmusic
 					{
 						update_hot_status(pt);
 					}
+				}
 			}
 			break;
 		case WM_ENABLE:
@@ -457,6 +461,8 @@ namespace musicmusic
 			{
 				if (get_enabled()) 
 				{
+					m_last_mouse_position = lp;
+
 					POINT pt; 
 
 					pt.x = GET_X_LPARAM(lp);

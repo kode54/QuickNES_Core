@@ -214,7 +214,7 @@ namespace musicmusic
 		track_bar()
 			: m_theme(0), m_position(0), m_range_min(0), m_range_max(0), m_thumb_hot(0), m_host(0), 
 			m_display_position(0), m_dragging(false), m_show_tooltips(false), m_wnd_prev(0),
-			m_wnd_tooltip(0), m_uxtheme(0)
+			m_last_mouse_position(~0), m_wnd_tooltip(0), m_uxtheme(0)
 		{};
 		~track_bar();
 	protected:
@@ -332,6 +332,11 @@ namespace musicmusic
 		* Handle to tooltip window.
 		*/
 		HWND m_wnd_tooltip;
+
+		/**
+		* Last mouse position.
+		*/
+		LPARAM m_last_mouse_position;
 
 		virtual class_data & get_class_data()const ;
 
