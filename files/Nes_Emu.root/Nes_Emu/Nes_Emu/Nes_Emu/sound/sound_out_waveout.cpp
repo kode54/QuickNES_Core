@@ -2,7 +2,7 @@
 
 #include "sound_out.h"
 
-#define HAVE_KS_HEADERS
+//#define HAVE_KS_HEADERS
 
 #define STRICT
 #include <windows.h>
@@ -100,7 +100,7 @@ public:
 		wfx.nChannels = nch; //1;
 		wfx.nSamplesPerSec = sample_rate;
 		wfx.nBlockAlign = 2 * nch; //2;
-		wfx.nAvgBytesPerSec = wfx.Format.nSamplesPerSec * wfx.Format.nBlockAlign;
+		wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
 		wfx.wBitsPerSample = 16;
 		wfx.cbSize = 0;
 #endif
