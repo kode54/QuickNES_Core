@@ -133,6 +133,16 @@ void Nes_Mapper::mirror_full()
 	emu()->get_ppu().set_nt_banks( 0, 1, 2, 3 );
 }
 
+byte const* Nes_Mapper::get_prg() const
+{
+	return prg;
+}
+
+long Nes_Mapper::get_prg_size() const
+{
+	return prg_size;
+}
+
 // None
 
 class Mapper_None : public Nes_Mapper {
@@ -375,6 +385,10 @@ Nes_Mapper* make_mapper( int code, Nes_Emu* emu )
 		
 		case 66:
 			mapper = BLARGG_NEW Mapper_Gnrom;
+			break;
+
+		case 69:
+			mapper = Nes_Mapper::make_fme07();
 			break;
 		
 		case 71:
