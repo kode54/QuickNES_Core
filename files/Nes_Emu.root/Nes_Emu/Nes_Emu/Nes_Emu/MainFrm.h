@@ -437,7 +437,8 @@ public:
 					m_film.trim( begin, m_film.end() );
 				}
 
-				int dir = emu_direction * emu_speed;
+				int dir = emu_direction;
+				if ( ! emu_seeking ) dir *= emu_speed;
 				while ( dir )
 				{
 					if ( dir < 0 && m_emu.tell() <= m_film.begin() )
@@ -616,6 +617,8 @@ public:
 		pixels = 0;
 
 		emu_state = emu_stopped;
+
+		emu_seeking = false;
 		
 		path = 0;
 		path_snap = 0;
