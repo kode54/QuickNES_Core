@@ -201,8 +201,11 @@ void Nes_Ppu_Rendering_<clipped>::draw_bg( Nes_Ppu_Rendering& ppu, int scanline,
 	}
 }
 
-template class Nes_Ppu_Rendering_<0>;
-template class Nes_Ppu_Rendering_<1>;
+static void instantiate_template()
+{
+	Nes_Ppu_Rendering_<0>::draw_bg( *(Nes_Ppu_Rendering*) 0, 0, 0, 0 );
+	Nes_Ppu_Rendering_<1>::draw_bg( *(Nes_Ppu_Rendering*) 0, 0, 0, 0 );
+}
 
 // Sprites
 

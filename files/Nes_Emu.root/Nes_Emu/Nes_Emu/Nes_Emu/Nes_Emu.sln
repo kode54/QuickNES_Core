@@ -6,7 +6,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Nes_Emu", "Nes_Emu.vcproj",
 		{663FB33A-7E53-42B7-A33C-6737E3A0EF02} = {663FB33A-7E53-42B7-A33C-6737E3A0EF02}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lib", "..\..\Nes_Emu-0.5.0\win32\lib\lib.vcproj", "{663FB33A-7E53-42B7-A33C-6737E3A0EF02}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lib", "..\..\Nes_Emu-0.5.4\win32\lib.vcproj", "{663FB33A-7E53-42B7-A33C-6737E3A0EF02}"
 EndProject
 Global
 	GlobalSection(SourceCodeControl) = preSolution
@@ -15,12 +15,12 @@ Global
 		SccLocalPath0 = ..\\..
 		SccProvider0 = MSSCCI:Microsoft\u0020Visual\u0020SourceSafe
 		SccProjectFilePathRelativizedFromConnection0 = Nes_Emu\\Nes_Emu\\
-		SccProjectUniqueName1 = ..\\..\\Nes_Emu-0.5.0\\win32\\lib\\lib.vcproj
+		SccProjectUniqueName1 = Nes_Emu.vcproj
 		SccLocalPath1 = ..\\..
-		SccProjectFilePathRelativizedFromConnection1 = Nes_Emu-0.5.0\\win32\\lib\\
-		SccProjectUniqueName2 = Nes_Emu.vcproj
+		SccProjectFilePathRelativizedFromConnection1 = Nes_Emu\\Nes_Emu\\
+		SccProjectUniqueName2 = ..\\..\\Nes_Emu-0.5.4\\win32\\lib.vcproj
 		SccLocalPath2 = ..\\..
-		SccProjectFilePathRelativizedFromConnection2 = Nes_Emu\\Nes_Emu\\
+		SccProjectFilePathRelativizedFromConnection2 = Nes_Emu-0.5.4\\win32\\
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32

@@ -43,8 +43,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories=".."
-				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
+				AdditionalIncludeDirectories="../.."
+				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;NES_EMU_ENABLE_VRC6"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -106,8 +106,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
-				AdditionalIncludeDirectories=".."
-				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
+				AdditionalIncludeDirectories="../.."
+				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;NES_EMU_ENABLE_VRC6"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
@@ -156,14 +156,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\apu_snapshot.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\apu_snapshot.h"
-				>
-			</File>
-			<File
 				RelativePath="..\nes_emu\Blip_Buffer.cpp"
 				>
 			</File>
@@ -180,15 +172,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\misc_mappers.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\nes_emu\Multi_Buffer.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\nes_emu\Nes_Apu.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Apu_State.cpp"
 				>
 			</File>
 			<File
@@ -212,15 +204,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\nes_mappers.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\nes_emu\Nes_Mmc1.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\nes_emu\Nes_Mmc3.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Nonlinearizer.cpp"
 				>
 			</File>
 			<File
@@ -232,7 +224,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Ppu_Impl.cpp"
+				RelativePath="..\nes_emu\Nes_Ppu_Core.cpp"
 				>
 			</File>
 			<File
@@ -261,14 +253,6 @@
 			</File>
 			<File
 				RelativePath="..\nes_emu\Nes_Vrc6.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nonlinear_Buffer.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nonlinear_Effects_Buffer.cpp"
 				>
 			</File>
 		</Filter>
@@ -334,19 +318,15 @@
 				>
 			</File>
 			<File
+				RelativePath="..\nes_emu\Nes_Nonlinearizer.h"
+				>
+			</File>
+			<File
 				RelativePath="..\nes_emu\Nes_Oscs.h"
 				>
 			</File>
 			<File
 				RelativePath="..\nes_emu\Nes_Ppu.h"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nes_Ppu_Impl.h"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nes_Ppu_Rendering.h"
 				>
 			</File>
 			<File
@@ -371,14 +351,6 @@
 			</File>
 			<File
 				RelativePath="..\nes_emu\Nes_Vrc6.h"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nonlinear_Buffer.h"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nonlinear_Effects_Buffer.h"
 				>
 			</File>
 			<File

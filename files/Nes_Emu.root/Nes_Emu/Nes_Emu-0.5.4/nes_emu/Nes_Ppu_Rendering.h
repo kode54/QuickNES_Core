@@ -8,8 +8,6 @@
 
 #include "nes_state.h"
 
-class Nes_Ppu_Rendering;
-
 template<int clipped>
 struct Nes_Ppu_Rendering_
 {
