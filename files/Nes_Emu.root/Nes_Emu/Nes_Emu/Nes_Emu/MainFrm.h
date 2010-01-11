@@ -423,7 +423,7 @@ public:
 
 				bool wait_for_vsync = true;
 
-				if ( m_audio && m_audio->buffered() < 5 )
+				if ( m_audio && m_audio->buffered() < 7 )
 					wait_for_vsync = false;
 
 				m_video->paint( rect, wait_for_vsync );
@@ -974,7 +974,7 @@ public:
 			Std_File_Reader_u in;
 			err = in.open( path );
 			if ( ! err ) err = m_emu.set_sample_rate( sound_config.sample_rate, & m_effects_buffer );
-			if ( ! err ) err = m_emu.use_circular_film( 5 * 60 * m_emu.frames_per_second );
+			if ( ! err ) err = m_emu.use_circular_film( core_config.record_indefinitely ? 0 : 5 * 60 * m_emu.frames_per_second );
 			if ( ! err ) err = m_emu.load_ines_rom( in );
 			if ( ! err )
 			{
