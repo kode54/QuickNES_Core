@@ -172,6 +172,20 @@ public:
 		bl->set_direction( dir );
 	}
 
+	virtual bool get_forward()
+	{
+		bool ret;
+
+		ret = bl->get_forward();
+
+		return ret;
+	}
+
+	virtual void set_forward( bool forward )
+	{
+		bl->set_forward( forward );
+	}
+
 	virtual void set_focus( bool is_focused )
 	{
 		di->set_focus( is_focused );

@@ -31,6 +31,10 @@ public:
 
 	virtual void set_direction( int ) = 0;
 
+	virtual bool get_forward() = 0;
+
+	virtual void set_forward( bool ) = 0;
+
 	virtual void reset() = 0;
 
 	virtual void set_focus( bool is_focused ) = 0;

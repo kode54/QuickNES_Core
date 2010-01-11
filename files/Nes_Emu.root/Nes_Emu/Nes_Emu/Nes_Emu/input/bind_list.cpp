@@ -16,6 +16,8 @@ class bind_list_i : public bind_list
 
 	int direction;
 
+	bool forward;
+
 	bool rapid_enable[2];
 
 	Joypad_Filter filter[2];
@@ -53,6 +55,10 @@ class bind_list_i : public bind_list
 
 		else if ( which == bind_rewind_hold ) direction = -1;
 
+		else if ( which == bind_forward_toggle ) forward = ! forward;
+		
+		else if ( which == bind_forward_hold ) forward = true;
+
 		else if ( which == bind_joy_0_rapid ) rapid_enable[ 0 ] = ! rapid_enable[ 0 ];
 
 		else if ( which == bind_joy_1_rapid ) rapid_enable[ 1 ] = ! rapid_enable[ 1 ];
@@ -65,6 +71,8 @@ class bind_list_i : public bind_list
 		else if ( which >= bind_pad_1_a && which <= bind_pad_1_right ) joy[ 1 ] &= ~ ( 1 << ( which - bind_pad_1_a ) );
 
 		else if ( which == bind_rewind_hold ) direction = 1;
+
+		else if ( which == bind_forward_hold ) forward = false;
 	}
 
 public:
@@ -387,12 +395,24 @@ public:
 		direction = dir;
 	}
 
+	virtual bool get_forward()
+	{
+		return forward;
+	}
+
+	virtual void set_forward( bool f )
+	{
+		forward = f;
+	}
+
 	virtual void reset()
 	{
 		joy[ 0 ] = 0;
 		joy[ 1 ] = 0;
 
 		direction = 1;
+
+		forward = false;
 
 		rapid_enable[ 0 ] = false;
 		rapid_enable[ 1 ] = false;

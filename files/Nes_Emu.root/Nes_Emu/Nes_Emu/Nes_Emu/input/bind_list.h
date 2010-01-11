@@ -33,6 +33,9 @@ public:
 		bind_rewind_toggle,
 		bind_rewind_hold,
 
+		bind_forward_toggle,
+		bind_forward_hold,
+
 		bind_joy_0_rapid,
 		bind_joy_1_rapid
 	};
@@ -67,6 +70,10 @@ public:
 	virtual int get_direction() = 0;
 
 	virtual void set_direction( int ) = 0;
+
+	virtual bool get_forward() = 0;
+
+	virtual void set_forward( bool ) = 0;
 
 	virtual void reset() = 0;
 };
