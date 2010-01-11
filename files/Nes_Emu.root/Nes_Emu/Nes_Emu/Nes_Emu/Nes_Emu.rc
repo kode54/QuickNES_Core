@@ -72,6 +72,7 @@ BEGIN
         MENUITEM "&Pause\tCtrl+P",              ID_CORE_PAUSE
         MENUITEM "Next frame\tCtrl+N",          ID_CORE_NEXTFRAME
         MENUITEM "Re&wind",                     ID_CORE_REWIND
+        MENUITEM "Fast forward",                ID_CORE_FASTFORWARD
         MENUITEM SEPARATOR
         MENUITEM "Record &indefinitely",        ID_CORE_RECORDINDEFINITELY
         MENUITEM SEPARATOR
@@ -207,6 +208,7 @@ IDR_MAINFRAME ACCELERATORS
 BEGIN
     "Q",            ID_APP_EXIT,            VIRTKEY, CONTROL, NOINVERT
     VK_ESCAPE,      ID_APP_EXIT,            VIRTKEY, NOINVERT
+    "N",            ID_CORE_NEXTFRAME,      VIRTKEY, CONTROL, NOINVERT
     "P",            ID_CORE_PAUSE,          VIRTKEY, CONTROL, NOINVERT
     "R",            ID_CORE_RESET,          VIRTKEY, CONTROL, NOINVERT
     "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL, NOINVERT
@@ -234,7 +236,6 @@ BEGIN
     VK_F8,          ID_SNAP_SAVE_7,         VIRTKEY, SHIFT, NOINVERT
     VK_F9,          ID_SNAP_SAVE_8,         VIRTKEY, SHIFT, NOINVERT
     VK_F10,         ID_SNAP_SAVE_9,         VIRTKEY, SHIFT, NOINVERT
-    "N",            ID_CORE_NEXTFRAME,      VIRTKEY, CONTROL, NOINVERT
 END
 
 
@@ -363,14 +364,4 @@ END
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 
-
-
-#ifndef APSTUDIO_INVOKED
-/////////////////////////////////////////////////////////////////////////////
-//
-// Generated from the TEXTINCLUDE 3 resource.
-//
-
-/////////////////////////////////////////////////////////////////////////////
-#endif    // not APSTUDIO_INVOKED
 
