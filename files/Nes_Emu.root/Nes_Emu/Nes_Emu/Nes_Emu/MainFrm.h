@@ -407,12 +407,12 @@ public:
 				}
 
 				{
-					unsigned char palette[ m_emu.palette_size ];
-					for ( unsigned i = 0; i < m_emu.palette_size; ++i )
+					unsigned char palette[ 256 ];
+					for ( unsigned i = 0, j = m_emu.palette_size(); i < j; ++i )
 					{
 						palette[ i ] = m_emu.palette_entry( i );
 					}
-					m_video->update_palette( ( const unsigned char * ) & nes_palette, palette, m_emu.palette_start, m_emu.palette_size );
+					m_video->update_palette( ( const unsigned char * ) & nes_palette, palette, m_emu.palette_start, m_emu.palette_size() );
 				}
 
 				RECT rect;

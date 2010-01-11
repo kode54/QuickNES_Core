@@ -232,6 +232,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\nes_emu\Nes_Mmc5.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\nes_emu\Nes_Namco_Apu.cpp"
 				>
 			</File>
@@ -351,6 +355,10 @@
 			</File>
 			<File
 				RelativePath="..\nes_emu\Nes_Mapper.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Mmc5.h"
 				>
 			</File>
 			<File
