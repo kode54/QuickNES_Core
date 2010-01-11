@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#include "Nes_Fme07.h"
+
 #include <nes_emu/Nes_Mapper.h>
 
 #include <string.h>
@@ -20,22 +22,45 @@ struct fme07_state_t
 	// internal state
 	byte irq_pending;
 	BOOST::uint32_t next_time;
+
+	ay_snapshot_t sound_state;
 };
-BOOST_STATIC_ASSERT( sizeof (fme07_state_t) == 24 );
+BOOST_STATIC_ASSERT( sizeof (fme07_state_t) == 24 + sizeof( ay_snapshot_t ) );
 
 class Mapper_Fme07 : public Nes_Mapper, fme07_state_t {
+	Nes_Fme07 sound;
 public:
 	Mapper_Fme07()
 	{
 		fme07_state_t * state = this;
 		register_state( state, sizeof ( * state ) );
 	}
+
+	virtual int channel_count() const { return sound.osc_count; }
+
+	virtual void set_channel_buf( int i, Blip_Buffer* b ) { sound.osc_output( i, b ); }
+
+	virtual void set_treble( blip_eq_t const& eq ) { sound.treble_eq( eq ); }
 	
 	virtual int save_state( mapper_state_t* out )
 	{
+		sound.save_snapshot( & sound_state );
+
 		set_le16( &irq_count, irq_count );
 		set_le32( &next_time, next_time );
-		
+
+		set_le16( &sound_state.PeriodA, sound_state.PeriodA );
+		set_le16( &sound_state.PeriodB, sound_state.PeriodB );
+		set_le16( &sound_state.PeriodC, sound_state.PeriodC );
+		set_le16( &sound_state.PeriodN, sound_state.PeriodN );
+		set_le16( &sound_state.PeriodE, sound_state.PeriodE );
+		set_le16( &sound_state.CountA, sound_state.CountA );
+		set_le16( &sound_state.CountB, sound_state.CountB );
+		set_le16( &sound_state.CountC, sound_state.CountC );
+		set_le16( &sound_state.CountN, sound_state.CountN );
+		set_le16( &sound_state.CountE, sound_state.CountE );
+		set_le32( &sound_state.RNG, sound_state.RNG );
+
 		return Nes_Mapper::save_state( out );
 	}
 	
@@ -45,6 +70,18 @@ public:
 		
 		irq_count = get_le16( &irq_count );
 		next_time = get_le32( &next_time );
+
+		sound_state.PeriodA = get_le16( &sound_state.PeriodA );
+		sound_state.PeriodB = get_le16( &sound_state.PeriodB );
+		sound_state.PeriodC = get_le16( &sound_state.PeriodC );
+		sound_state.PeriodN = get_le16( &sound_state.PeriodN );
+		sound_state.PeriodE = get_le16( &sound_state.PeriodE );
+		sound_state.CountA = get_le16( &sound_state.CountA );
+		sound_state.CountB = get_le16( &sound_state.CountB );
+		sound_state.CountC = get_le16( &sound_state.CountC );
+		sound_state.CountN = get_le16( &sound_state.CountN );
+		sound_state.CountE = get_le16( &sound_state.CountE );
+		sound_state.RNG = get_le32( &sound_state.RNG );
 	}
 	
 	virtual void reset()
@@ -62,6 +99,9 @@ public:
 		irq_count = 0xFFFF;
 		irq_enabled = false;
 		irq_pending = false;
+
+		next_time = 0;
+		sound.reset();
 		
 		set_prg_bank( 0xE000, bank_8k, last_bank );
 		apply_mapping();
@@ -121,6 +161,7 @@ public:
 	void reset_timer( nes_time_t present )
 	{
 		next_time = present + irq_count;
+		irq_changed();
 	}
 	
 	virtual void run_until( nes_time_t end_time )
@@ -147,6 +188,8 @@ public:
 		
 		next_time -= end_time;
 		assert( next_time >= 0 );
+
+		sound.end_frame( end_time );
 	}
 	
 	virtual nes_time_t next_irq( nes_time_t present )
@@ -164,7 +207,8 @@ public:
 	{
 		if ( addr >= 0xc000 )
 		{
-			// sound registers
+			if ( addr >= 0xe000 ) sound.write_data( time, data );
+			else sound.write_reg( data );
 		}
 		else if ( addr >= 0xa000 )
 		{
@@ -194,7 +238,6 @@ public:
 						reset_timer( time );
 					break;
 				}
-				irq_changed();
 			}
 			else if ( command == 0x0c )
 			{
