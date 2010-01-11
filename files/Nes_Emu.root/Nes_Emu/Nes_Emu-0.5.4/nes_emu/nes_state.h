@@ -76,7 +76,7 @@ struct joypad_state_t
 };
 BOOST_STATIC_ASSERT( sizeof (joypad_state_t) == 12 );
 
-int const max_mapper_state_size = 64;
+int const max_mapper_state_size = 96;
 struct mapper_state_t
 {
 	byte state [max_mapper_state_size];
