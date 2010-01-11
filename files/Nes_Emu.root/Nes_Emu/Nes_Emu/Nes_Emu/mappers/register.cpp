@@ -1,10 +1,15 @@
 #include "stdafx.h"
 
+void register_mmc5_mapper();
+void register_vrc6_mapper();
+void register_misc_mappers();
+void register_fme07_mapper();
+
 void register_mappers();
 void register_mappers()
 {
-	Nes_Mapper::register_optional_mappers();
-
-	extern void register_vrc7_mapper();
-	register_vrc7_mapper();
+	register_mmc5_mapper();
+	register_vrc6_mapper();
+	register_misc_mappers();
+	register_fme07_mapper();
 }

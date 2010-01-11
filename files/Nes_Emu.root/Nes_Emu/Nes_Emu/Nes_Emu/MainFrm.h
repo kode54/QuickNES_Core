@@ -18,6 +18,8 @@
 static const int top_clip = 8; // first scanlines not visible on most televisions
 static const int bottom_clip = 4; // last scanlines ^
 
+void register_mappers();
+
 static const unsigned char nes_palette [64][4] =
 {
    {0x60,0x60,0x60}, {0x00,0x21,0x7b}, {0x00,0x00,0x9c}, {0x31,0x00,0x8b},
@@ -390,7 +392,7 @@ public:
 
 				if ( m_controls )
 				{
-					if ( m_emu.were_joypads_read() ) m_controls->strobe();
+					if ( m_emu.joypad_read_count() ) m_controls->strobe();
 				}
 
 				if ( m_audio && ! emu_seeking )
@@ -742,6 +744,8 @@ public:
 
 		m_view.m_video = m_video;
 
+		register_mappers();
+
 		::SetPriorityClass( ::GetCurrentProcess(), HIGH_PRIORITY_CLASS );
 		::SetThreadPriority( ::GetCurrentThread(), THREAD_PRIORITY_HIGHEST );
 
@@ -969,7 +973,7 @@ public:
 			const char * err;
 			Std_File_Reader_u in;
 			err = in.open( path );
-			if ( ! err ) err = m_emu.set_sample_rate_nonlinear( 44100 );
+			if ( ! err ) err = m_emu.set_sample_rate( sound_config.sample_rate, & m_effects_buffer );
 			if ( ! err ) err = m_emu.use_circular_film( 5 * 60 * m_emu.frames_per_second );
 			if ( ! err ) err = m_emu.load_ines_rom( in );
 			if ( ! err )

@@ -53,7 +53,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="c:\programming\nes_emu-0.5.0"
+				AdditionalIncludeDirectories="c:\programming\nes_emu-0.5.4"
 				PreprocessorDefinitions="WIN32;_WINDOWS;STRICT;_DEBUG"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -141,7 +141,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="c:\programming\nes_emu-0.5.0"
+				AdditionalIncludeDirectories="c:\programming\nes_emu-0.5.4"
 				PreprocessorDefinitions="WIN32;_WINDOWS;STRICT;NDEBUG"
 				ExceptionHandling="0"
 				RuntimeLibrary="0"
@@ -343,6 +343,18 @@
 				</File>
 				<File
 					RelativePath=".\music\window_helper.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="mappers"
+				>
+				<File
+					RelativePath=".\mappers\Mapper_Fme07.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\mappers\register.cpp"
 					>
 				</File>
 			</Filter>
