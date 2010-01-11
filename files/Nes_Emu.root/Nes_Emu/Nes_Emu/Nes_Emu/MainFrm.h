@@ -15,11 +15,13 @@
 
 #include "music/trackbar.h"
 
-static const int top_clip = 8; // first scanlines not visible on most televisions
-static const int bottom_clip = 4; // last scanlines ^
+/*static const int top_clip = 8; // first scanlines not visible on most televisions
+static const int bottom_clip = 4; // last scanlines ^*/
 
 void register_mappers();
 
+#if 0
+#if 1
 static const unsigned char nes_palette [64][4] =
 {
    {0x60,0x60,0x60}, {0x00,0x21,0x7b}, {0x00,0x00,0x9c}, {0x31,0x00,0x8b},
@@ -42,6 +44,31 @@ static const unsigned char nes_palette [64][4] =
    {0xfc,0xe0,0x90}, {0xe2,0xea,0x98}, {0xca,0xf2,0xa0}, {0xa0,0xea,0xe2},
    {0xa0,0xe2,0xfa}, {0xb6,0xb6,0xb6}, {0x0c,0x0c,0x0c}, {0x0c,0x0c,0x0c}
 };
+#else
+static const unsigned char nes_palette [64][4] =
+{
+   {0x78,0x80,0x84}, {0x00,0x00,0xfc}, {0x00,0x00,0xc4}, {0x40,0x28,0xc4},
+   {0x94,0x00,0x8c}, {0xac,0x00,0x28}, {0xac,0x10,0x00}, {0x8c,0x18,0x00},
+   {0x50,0x30,0x00}, {0x00,0x78,0x00}, {0x00,0x68,0x00}, {0x00,0x58,0x00},
+   {0x00,0x40,0x58}, {0x00,0x00,0x00}, {0x00,0x00,0x00}, {0x00,0x00,0x08},
+
+   {0xbc,0xc0,0xc4}, {0x00,0x78,0xfc}, {0x00,0x88,0xfc}, {0x68,0x48,0xfc},
+   {0xdc,0x00,0xd4}, {0xe4,0x00,0x60}, {0xfc,0x38,0x00}, {0xe4,0x60,0x18},
+   {0xac,0x80,0x00}, {0x00,0xb8,0x00}, {0x00,0xa8,0x00}, {0x00,0xa8,0x48},
+   {0x00,0x88,0x94}, {0x2c,0x2c,0x2c}, {0x00,0x00,0x00}, {0x00,0x00,0x00},
+
+   {0xfc,0xf8,0xfc}, {0x38,0xc0,0xfc}, {0x68,0x88,0xfc}, {0x9c,0x78,0xfc},
+   {0xfc,0x78,0xfc}, {0xfc,0x58,0x9c}, {0xfc,0x78,0x58}, {0xfc,0xa0,0x48},
+   {0xfc,0xb8,0x00}, {0xbc,0xf8,0x18}, {0x58,0xd8,0x58}, {0x58,0xf8,0x9c},
+   {0x00,0xe8,0xe4}, {0x60,0x60,0x60}, {0x00,0x00,0x00}, {0x00,0x00,0x00},
+
+   {0xfc,0xf8,0xfc}, {0xa4,0xe8,0xfc}, {0xbc,0xb8,0xfc}, {0xdc,0xb8,0xfc},
+   {0xfc,0xb8,0xfc}, {0xf4,0xc0,0xe0}, {0xf4,0xc0,0xb4}, {0xfc,0xe0,0xb4},
+   {0xfc,0xd8,0x84}, {0xdc,0xf8,0x78}, {0xb8,0xf8,0x78}, {0xb0,0xf0,0xd8},
+   {0x00,0xf8,0xfc}, {0xc8,0xc0,0xc0}, {0x00,0x00,0x00}, {0x00,0x00,0x00}
+};
+#endif
+#endif
 
 static bool file_picker( HWND w, TCHAR * & path, const TCHAR * title, const TCHAR * filter, const TCHAR * default_extension, bool save )
 {
@@ -167,14 +194,18 @@ class CMainFrame : public CFrameWindowImpl<CMainFrame>, public CUpdateUI<CMainFr
 	bookmarks_t bookmarks;
 
 
-	Nes_Recorder::equalizer_t default_eq;
+	Nes_Recorder m_emu;
+	Nes_Film     m_film;
+	Nes_Cart     m_cart;
 
-	Nes_Rewinder m_emu;
+	Nes_Buffer         m_buffer;
+	Nes_Effects_Buffer m_effects_buffer;
 
-	Effects_Buffer m_effects_buffer;
+	Nes_Blitter m_blitter;
 
 	CString save_path;
 
+	CString path_base;
 	CString filename_base;
 
 	core_config_t core_config;
@@ -190,6 +221,8 @@ class CMainFrame : public CFrameWindowImpl<CMainFrame>, public CUpdateUI<CMainFr
 
 	signed short   * sound_buf;
 	unsigned         sound_buf_size;
+
+	unsigned char * pixels;
 
 	unsigned input_last;
 
@@ -207,7 +240,7 @@ class CMainFrame : public CFrameWindowImpl<CMainFrame>, public CUpdateUI<CMainFr
 	}
 	emu_state;
 
-	int emu_direction;
+	int emu_direction, last_direction;
 
 	int emu_step;
 
@@ -242,13 +275,7 @@ public:
 		}
 		else if ( emu_state == emu_paused )
 		{
-			CString text;
-			text.LoadString( IDS_PAUSED );
-			if ( status_text != text )
-			{
-				CStatusBarCtrl status = m_hWndStatusBar;
-				status.SetText( 0, status_text = text );
-			}
+			set_status( IDS_PAUSED );
 		}
 		BOOL state = emu_state != emu_stopped;
 		UIEnable( ID_SNAP_LOAD, state );
@@ -268,9 +295,20 @@ public:
 		return ( emu_state == emu_running ) ? TRUE : FALSE;
 	}
 
+	void set_status( int nID )
+	{
+		CString text;
+		text.LoadString( nID );
+		if ( status_text != text )
+		{
+			CStatusBarCtrl status = m_hWndStatusBar;
+			status.SetText( 0, status_text = text );
+		}
+	}
+
 	void config_sound()
 	{
-		Nes_Recorder::equalizer_t eq = default_eq;
+		Nes_Emu::equalizer_t eq = Nes_Emu::nes_eq;
 		if ( sound_config.effects_enabled )
 		{
 			// bass - logarithmic, 2 to 8194 Hz
@@ -279,7 +317,6 @@ public:
 
 			// treble - level from -108 to 0 to 5 dB
 			double treble = double( sound_config.treble - 128 ) / 128;
-			eq.cutoff = 0;
 			eq.treble = treble * ( ( treble > 0 ) ? 16.0 : 80.0 ) - 8.0;
 		}
 		m_emu.set_equalizer( eq );
@@ -307,11 +344,15 @@ public:
 
 			if ( ! m_audio )
 			{
-				sound_buf_size = sound_config.sample_rate / ( m_emu.frames_per_second / 2 ) * 2;
+				sound_buf_size = sound_config.sample_rate / ( m_emu.frame_rate / 2 ) * 2;
 
 				m_audio = create_sound_out();
-				err = m_audio->open( sound_config.sample_rate, 2, sound_buf_size, 10 );
-				if ( ! err ) err = m_emu.set_sample_rate( sound_config.sample_rate, & m_effects_buffer );
+				err = m_audio->open( sound_config.sample_rate, sound_config.effects_enabled ? 2 : 1, sound_buf_size, 10 );
+				if ( ! err )
+				{
+					if ( sound_config.effects_enabled ) err = m_emu.set_sample_rate( sound_config.sample_rate, &m_effects_buffer );
+					else err = m_emu.set_sample_rate( sound_config.sample_rate, &m_buffer );
+				}
 				if ( err )
 				{
 					stop_error( err );
@@ -319,8 +360,6 @@ public:
 				}
 
 				config_sound();
-
-				m_emu.enable_sound( true );
 
 				if ( sound_buf )
 				{
@@ -348,51 +387,73 @@ public:
 					{
 						m_controls->set_direction( 1 );
 
-						if ( m_emu.replaying() ) cut = TRUE;
-
-						m_emu.start_recording();
+						m_emu.film().trim( m_emu.film().begin(), m_emu.tell() );
 					}
 
 					input_last = input_now;
 				}
 
-				if ( emu_direction < 0 && m_emu.tell() <= m_emu.movie_begin() )
+				if ( emu_direction < 0 && m_emu.tell() <= m_emu.film().begin() )
 				{
-					CString text;
-					text.LoadString( IDS_PAUSED );
-					if ( status_text != text )
-					{
-						CStatusBarCtrl status = m_hWndStatusBar;
-						status.SetText( 0, status_text = text );
-					}
+					set_status( IDS_PAUSED );
 					return;
 				}
 			}
 
 			if ( m_video )
 			{
+				if ( emu_direction != last_direction )
+					emu_direction -= last_direction;
+
+				if ( !core_config.record_indefinitely )
+				{
+					long begin = m_film.constrain( m_film.end() - 5 * 60 * m_emu.frame_rate );
+					if ( m_emu.tell() <= begin )
+					{
+						m_emu.seek( begin );
+						set_status( IDS_PAUSED );
+						return;
+					}
+					m_film.trim( begin, m_film.end() );
+				}
+
+				while ( emu_direction )
+				{
+					if ( emu_direction < 0 && m_emu.tell() <= m_film.begin() )
+					{
+						CString text;
+						set_status( IDS_PAUSED );
+						return;
+					}
+
+					if ( emu_direction < 0 )
+						m_emu.prev_frame();
+					else if ( m_emu.tell() < m_emu.film().end() )
+						m_emu.next_frame();
+					else
+					{
+						err = m_emu.emulate_frame( input_now & 255, ( input_now >> 8 ) & 255 );
+						if ( err )
+						{
+							stop_error( err );
+							return;
+						}
+					}
+
+					if ( m_controls && m_emu.frame().joypad_read_count > 0 )
+						m_controls->strobe();
+
+					last_direction = emu_direction;
+					emu_direction += ( emu_direction < 0 ? 1 : -1 );
+				}
+
 				void * fb;
 				unsigned pitch;
 				err = m_video->lock_framebuffer( fb, pitch );
 				if ( ! err )
 				{
-					m_emu.set_pixels( fb, pitch );
-					if ( emu_direction < 0 )
-						m_emu.prev_frame();
-					else
-						err = m_emu.next_frame( input_now & 255, ( input_now >> 8 ) & 255 );
-
+					m_blitter.blit( m_emu, fb, pitch );
 					m_video->unlock_framebuffer();
-
-					if ( err )
-					{
-						emu_state = emu_stopped;
-					}
-				}
-
-				if ( m_controls )
-				{
-					if ( m_emu.joypad_read_count() ) m_controls->strobe();
 				}
 
 				if ( m_audio && ! emu_seeking )
@@ -406,47 +467,35 @@ public:
 					}
 				}
 
+				/*RECT rect;
+
 				{
-					unsigned char palette[ 256 ];
-					for ( unsigned i = 0, j = m_emu.palette_size(); i < j; ++i )
-					{
-						palette[ i ] = m_emu.palette_entry( i );
-					}
-					m_video->update_palette( ( const unsigned char * ) & nes_palette, palette, m_emu.palette_start, m_emu.palette_size() );
+					const Nes_Emu::frame_t & frame = m_emu.frame();
+					m_video->update_palette( ( const unsigned char * ) & nes_palette, frame.palette, frame.palette_begin, frame.palette_size );
+
+					rect.left = frame.left;
+					rect.top = frame.top + top_clip;
 				}
 
-				RECT rect;
-				rect.left = m_emu.image_left;
-				rect.top = m_emu.get_buffer_y() + top_clip + m_emu.image_top;
 				rect.right = rect.left + m_emu.image_width;
-				rect.bottom = rect.top + m_emu.image_height - top_clip - bottom_clip;
+				rect.bottom = rect.top + m_emu.image_height - top_clip - bottom_clip;*/
 
 				bool wait_for_vsync = true;
 
 				if ( m_audio && m_audio->buffered() < 7 )
 					wait_for_vsync = false;
 
-				m_video->paint( rect, wait_for_vsync );
+				m_video->paint( /*rect,*/ wait_for_vsync );
 			}
 
 			if ( ! emu_seeking )
 			{
-				m_TrackBar.set_range( m_emu.movie_begin(), m_emu.movie_end() );
+				m_TrackBar.set_range( m_emu.film().begin(), m_emu.film().end() );
 				m_TrackBar.set_position( m_emu.tell() );
 			}
 			UISetCheck( ID_CORE_REWIND, emu_direction < 0 );
 
-			{
-				CString text;
-				if ( emu_direction < 0 ) text.LoadString( IDS_REWINDING );
-				else if ( m_emu.replaying() ) text.LoadString( IDS_PLAYING );
-				else text.LoadString( IDS_RECORDING );
-				if ( status_text != text )
-				{
-					CStatusBarCtrl status = m_hWndStatusBar;
-					status.SetText( 0, status_text = text );
-				}
-			}
+			set_status( emu_direction < 0 ? IDS_REWINDING : ( ( m_emu.tell() < m_emu.film().end() ) ? IDS_PLAYING : IDS_RECORDING ) );
 
 			if ( emu_step )
 			{
@@ -525,15 +574,30 @@ public:
 
 		m_audio = 0;
 
+		m_controls = 0;
+
 		sound_buf = 0;
 
-		default_eq = m_emu.equalizer();
-		
+		pixels = 0;
+
 		emu_state = emu_stopped;
 		
 		path = 0;
 		path_snap = 0;
 		path_film = 0;
+
+		m_film.clear( 30 * m_emu.frame_rate );
+
+		const char * err = m_emu.set_sample_rate( 44100, &m_buffer );
+
+		if ( ! err )
+		{
+			m_emu.set_film( & m_film );
+
+			pixels = new unsigned char [(m_emu.buffer_height() + 1) * m_emu.buffer_width];
+			if ( pixels )
+				m_emu.set_pixels( pixels, m_emu.buffer_width );
+		}
 	}
 
 	~CMainFrame()
@@ -544,6 +608,7 @@ public:
 		{
 			sram_save();
 			filename_base.Empty();
+			path_base.Empty();
 		}
 
 		if ( m_controls )
@@ -570,6 +635,12 @@ public:
 		{
 			delete [] sound_buf;
 			sound_buf = 0;
+		}
+
+		if ( pixels )
+		{
+			delete [] pixels;
+			pixels = 0;
 		}
 
 		if ( path_film )
@@ -603,7 +674,7 @@ public:
 		if ( SUCCEEDED( SHGetFolderPath( 0, CSIDL_APPDATA | CSIDL_FLAG_CREATE, 0, SHGFP_TYPE_CURRENT, path ) ) )
 		{
 			save_path = path;
-			save_path += _T( "\\Nes_Emu" );
+			save_path += _T( "\\QuickNES" );
 			if ( CreateDirectory( save_path, NULL ) || GetLastError() == ERROR_ALREADY_EXISTS )
 			{
 				save_path += _T( '\\' );
@@ -718,8 +789,14 @@ public:
 		m_view.GetClientRect( & rcClient );
 		SetWindowPos( NULL, 0, 0, 640 + ( 640 - rcClient.right - rcClient.left ), 456 + ( 456 - rcClient.bottom - rcClient.top ), SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE );*/
 
-		m_video = create_display();
-		const char * err = m_video->open( m_emu.buffer_width, m_emu.buffer_height, m_hWndClient );
+		const char * err = m_blitter.init();
+
+		if ( !err )
+		{
+			m_video = create_display();
+			//err = m_video->open( m_emu.buffer_width, m_emu.buffer_height(), m_hWndClient );
+			err = m_video->open( m_blitter.out_width(), m_blitter.out_height(), m_hWndClient );
+		}
 
 		if ( err )
 		{
@@ -746,8 +823,10 @@ public:
 
 		register_mappers();
 
+#ifndef _DEBUG
 		::SetPriorityClass( ::GetCurrentProcess(), HIGH_PRIORITY_CLASS );
 		::SetThreadPriority( ::GetCurrentThread(), THREAD_PRIORITY_HIGHEST );
+#endif
 
 		// register object for message filtering and idle updates
 		CMessageLoop* pLoop = _Module.GetMessageLoop();
@@ -770,8 +849,8 @@ public:
 
 		rcs.left = 0;
 		rcs.top = 0;
-		rcs.right = 640;
-		rcs.bottom = 456;
+		rcs.right = m_blitter.out_width();
+		rcs.bottom = m_blitter.out_height() * 2;
 
 		if ( m_hWndClient != NULL )
 		{
@@ -824,7 +903,7 @@ public:
 					emu_was_paused = emu_state == emu_paused;
 				}
 
-				m_emu.quick_seek( m_emu.get_film().constrain( pos ) );
+				m_emu.seek( m_emu.nearby_keyframe( m_emu.film().constrain( pos ) ) );
 				emu_state = emu_running;
 				emu_step = 1;
 			}
@@ -836,7 +915,7 @@ public:
 					emu_state = emu_was_paused ? emu_paused : emu_running;
 				}
 
-				m_emu.quick_seek( m_emu.get_film().constrain( pos ) );
+				m_emu.seek( m_emu.nearby_keyframe( m_emu.film().constrain( pos ) ) );
 				emu_step = 0;
 			}
 		}
@@ -935,17 +1014,19 @@ public:
 		}
 
 		filename_base.Empty();
+		path_base.Empty();
 	}
 
 	LRESULT OnFileOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 	{
 		CString title, filter, extension;
-		title.LoadString( IDS_ROM_TITLE );
-		filter.LoadString( IDS_ROM_FILTER );
-		extension.LoadString( IDS_ROM_EXTENSION );
+		title.LoadString( IDS_CART_TITLE );
+		filter.LoadString( IDS_CART_FILTER );
+		extension.LoadString( IDS_CART_EXTENSION );
 		if ( file_picker( m_hWnd, path, title, filter, extension, false ) )
 		{
 			emu_direction = 1;
+			last_direction = 0;
 			emu_step = 0;
 			emu_seeking = false;
 			emu_was_paused = false;
@@ -965,28 +1046,46 @@ public:
 			{
 				sram_save();
 				filename_base.Empty();
+				path_base.Empty();
 			}
 
 			bookmarks.reset();
 			//m_TrackBar.ClearTics( TRUE );
 
+			//Multi_Buffer * buffer = sound_config.effects_enabled ? ( ( Multi_Buffer * ) &m_effects_buffer ) : ( ( Multi_Buffer * ) &m_buffer );
+
+			m_emu.close();
+			m_cart.clear();
+
 			const char * err;
 			Std_File_Reader_u in;
 			err = in.open( path );
-			if ( ! err ) err = m_emu.set_sample_rate( sound_config.sample_rate, & m_effects_buffer );
-			if ( ! err ) err = m_emu.use_circular_film( core_config.record_indefinitely ? 0 : 5 * 60 * m_emu.frames_per_second );
-			if ( ! err ) err = m_emu.load_ines_rom( in );
 			if ( ! err )
 			{
-				emu_state = emu_running;
-
 				const TCHAR * root = _tcsrchr( path, _T( '\\' ) );
 				if ( ! root ) root = path;
 				else root += 1;
 				filename_base = root;
+				if ( root > path ) path_base = CString( path, root - path );
+				else path_base = "";
 				int dot = filename_base.ReverseFind( _T( '.' ) );
 				if ( dot >= 0 ) filename_base = filename_base.Left( dot );
-
+			}
+			if ( ! err )
+			{
+				CString patch_name;
+				patch_name = path_base + filename_base + _T( ".ips" );
+				Std_File_Reader_u in_ips;
+				err = in_ips.open( patch_name );
+				if ( ! err ) err = m_cart.load_patched_ines( in, in_ips );
+				else err = m_cart.load_ines( in );
+			}
+			if ( ! err ) err = m_emu.set_cart( & m_cart );
+			//if ( ! err && ! core_config.record_indefinitely ) err = m_emu.film().make_circular( 5 * 60 * m_emu.frame_rate );
+			//if ( ! err ) err = m_emu.set_sample_rate( sound_config.sample_rate, buffer );
+			if ( ! err )
+			{
+				emu_state = emu_running;
 				sram_load();
 			}
 
@@ -1029,7 +1128,7 @@ public:
 		const char * err = in.open( path );
 		if ( ! err )
 		{
-			Nes_Film & film = m_emu.get_film();
+			Nes_Film & film = m_emu.film();
 
 			err = film.read( in );
 			if ( ! err )
@@ -1047,8 +1146,8 @@ public:
 	{
 		if ( bookmarks[ snap ] != bookmarks_t::invalid )
 		{
-			if ( bookmarks[ snap ] >= m_emu.movie_begin() &&
-				bookmarks[ snap ] <= m_emu.movie_end() )
+			if ( bookmarks[ snap ] >= m_emu.film().begin() &&
+				bookmarks[ snap ] <= m_emu.film().end() )
 				m_emu.seek( bookmarks[ snap ] );
 			else
 			{
@@ -1070,13 +1169,14 @@ public:
 		Std_File_Writer_u out;
 		if ( ! out.open( path ) )
 		{
-			const int size = m_emu.frames_per_second * 60 * 5;
-			const int period = m_emu.frames_per_second * 60;
-			const int end = m_emu.movie_end();
+			const Nes_Film & film = m_emu.film();
+			const int size = m_emu.frame_rate * 60 * 5;
+			const int period = m_emu.frame_rate * 60;
+			const int end = film.end();
 			int begin = end - size + 1;
-			if ( begin < m_emu.movie_begin() || begin > m_emu.movie_end() )
-				begin = m_emu.movie_begin();
-			m_emu.get_film().write( out, period, begin, end );
+			if ( begin < film.begin() || begin > film.end() )
+				begin = film.begin();
+			film.write( out, period, begin, end );
 		}
 	}
 
@@ -1339,14 +1439,19 @@ public:
 				const char * err = in.open( path_film );
 				if ( ! err )
 				{
-					Nes_Film & film = m_emu.get_film();
+					Nes_Film & film = m_emu.film();
 
 					err = film.read( in );
 					if ( ! err )
 					{
+						if ( ! core_config.record_indefinitely ) //film.make_circular( 5 * 60 * m_emu.frame_rate );
+						{
+							long begin = film.constrain( film.end() - 5 * 60 * m_emu.frame_rate );
+							film.trim( begin, film.end() );
+						}
 						input_last = 0;
 						m_emu.set_film( & film );
-						m_TrackBar.set_range( m_emu.movie_begin(), m_emu.movie_end() );
+						m_TrackBar.set_range( film.begin(), film.end() );
 						m_TrackBar.set_position( m_emu.tell() );
 					}
 					else stop_error( err );
@@ -1370,7 +1475,7 @@ public:
 				Std_File_Writer_u out;
 				if ( ! out.open( path_film ) )
 				{
-					m_emu.save_movie( out );
+					m_emu.film().write( out );
 				}
 			}
 		}
@@ -1383,6 +1488,7 @@ public:
 		if ( emu_state != emu_stopped )
 		{
 			emu_direction = 1;
+			last_direction = 0;
 			emu_step = 0;
 			emu_state = emu_running;
 			emu_seeking = false;

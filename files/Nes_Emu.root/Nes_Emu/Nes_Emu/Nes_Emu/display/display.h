@@ -18,9 +18,9 @@ public:
 	virtual const char* lock_framebuffer( void *& buffer, unsigned & pitch ) = 0;
 	virtual const char* unlock_framebuffer( ) = 0;
 
-	virtual const char* update_palette( const unsigned char * source_pal, const unsigned char * source_list, unsigned color_first, unsigned color_count ) = 0;
+	//virtual const char* update_palette( const unsigned char * source_pal, const unsigned char * source_list, unsigned color_first, unsigned color_count ) = 0;
 
-	virtual const char* paint( RECT rcSource, bool wait ) = 0;
+	virtual const char* paint( /*RECT rcSource,*/ bool wait ) = 0;
 
 	virtual void repaint() = 0;
 

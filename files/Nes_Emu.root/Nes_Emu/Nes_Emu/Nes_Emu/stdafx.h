@@ -34,9 +34,13 @@ extern CAppModule _Module;
   #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif
 
-#include <nes_emu/Nes_Rewinder.h>
-#include <nes_emu/Effects_Buffer.h>
+#include <nes_emu/Nes_Recorder.h>
+#include <nes_emu/Nes_Effects_Buffer.h>
+#include <nes_emu/Nes_Mapper.h>
+#include <nes_emu/nes_util.h>
 #include "std_file_u.h"
+
+#include <nes_emu/Nes_Blitter.h>
 
 #include <cmath>
 

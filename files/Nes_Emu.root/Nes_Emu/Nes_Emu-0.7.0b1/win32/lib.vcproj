@@ -157,10 +157,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\apu_snapshot.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\nes_emu\apu_state.cpp"
 				>
 			</File>
@@ -233,10 +229,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Emulator.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\nes_emu\Nes_File.cpp"
 				>
 			</File>
@@ -301,14 +293,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Rom.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nes_Snapshot.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\nes_emu\nes_state.cpp"
 				>
 			</File>
@@ -320,14 +304,6 @@
 				RelativePath="..\nes_emu\Nes_Vrc6_Apu.cpp"
 				>
 			</File>
-			<File
-				RelativePath="..\nes_emu\Nonlinear_Buffer.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nonlinear_Effects_Buffer.cpp"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -336,10 +312,6 @@
 			>
 			<File
 				RelativePath="..\nes_emu\abstract_file.h"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\apu_snapshot.h"
 				>
 			</File>
 			<File
@@ -364,10 +336,6 @@
 			</File>
 			<File
 				RelativePath="..\nes_emu\Blip_Buffer.h"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Blip_Synth.h"
 				>
 			</File>
 			<File
@@ -419,10 +387,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Emulator.h"
-				>
-			</File>
-			<File
 				RelativePath="..\nes_emu\Nes_File.h"
 				>
 			</File>
@@ -444,10 +408,6 @@
 			</File>
 			<File
 				RelativePath="..\nes_emu\Nes_Mapper.h"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nes_Mmc5.h"
 				>
 			</File>
 			<File
@@ -491,14 +451,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Rom.h"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nes_Snapshot.h"
-				>
-			</File>
-			<File
 				RelativePath="..\nes_emu\nes_state.h"
 				>
 			</File>
@@ -508,18 +460,6 @@
 			</File>
 			<File
 				RelativePath="..\nes_emu\Nes_Vrc6_Apu.h"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nonlinear_Buffer.h"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nonlinear_Effects_Buffer.h"
-				>
-			</File>
-			<File
-				RelativePath="source_begin.h"
 				>
 			</File>
 		</Filter>

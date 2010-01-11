@@ -74,10 +74,8 @@ public:
 		sound.load_snapshot( sound_state );
 	}
 	
-	virtual void reset()
+	virtual void reset_state()
 	{
-		Nes_Mapper::reset();
-
 		mirroring = 0;
 		
 		memset( prg_banks, 0, sizeof prg_banks );

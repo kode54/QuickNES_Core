@@ -259,6 +259,8 @@ private:
 			return DIENUM_CONTINUE;
 		}*/
 
+		lpdJoy->EnumObjects( g_enum_objects_callback, this, DIDFT_AXIS | DIDFT_BUTTON | DIDFT_POV );
+
 		DIPROPDWORD value;
 		memset( &value, 0, sizeof( value ) );
 		value.diph.dwSize = sizeof( value );
@@ -307,6 +309,11 @@ private:
 
 		joysticks.push_back( joy( guids->add( lpDev->guidInstance ), lpDev->guidInstance, lpDev->tszInstanceName, lpdJoy ) );
 
+		return DIENUM_CONTINUE;
+	}
+
+	static BOOL PASCAL g_enum_objects_callback( LPCDIDEVICEOBJECTINSTANCEW lpDOI, LPVOID lpContext )
+	{
 		return DIENUM_CONTINUE;
 	}
 };

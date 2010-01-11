@@ -111,7 +111,7 @@ blargg_err_t Fir_Resampler::buffer_size( int new_size )
 	buf = (sample_t*) new_buf;
 	buf_size = new_size;
 	clear();
-	return blargg_success;
+	return 0;
 }
 	
 double Fir_Resampler::time_ratio( double ratio, double rolloff, double volume )

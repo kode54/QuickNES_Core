@@ -28,16 +28,20 @@ public:
 	{
 		CenterWindow( GetParent() );
 
-		m_link_blargg.SetLabel( _T( "Emu_Nes v0.5.6 - Copyright 2005 Shay Green" ) );
+		m_link_blargg.SetLabel( _T( "QuickNES v0.7.0b1 - Copyright 2006 Shay Green" ) );
 		m_link_blargg.SetHyperLink( _T( "http://www.slack.net/~ant/" ) );
 		m_link_blargg.SubclassWindow( GetDlgItem( IDC_LINK_BLARGG ) );
 
-		m_link_aspiringsquire.SetLabel( _T( "RealityA.pal by AspiringSquire" ) );
+		/*m_link_aspiringsquire.SetLabel( _T( "RealityA.pal by AspiringSquire" ) );
 		m_link_aspiringsquire.SetHyperLink( _T( "http://filespace.org/AspiringSquire/" ) );
+		m_link_aspiringsquire.SubclassWindow( GetDlgItem( IDC_LINK_ASPIRINGSQUIRE ) );*/
+
+		m_link_aspiringsquire.SetLabel( _T( "Trackbar control by musicmusic" ) );
+		m_link_aspiringsquire.SetHyperLink( _T( "http://music.morbo.org/index.php" ) );
 		m_link_aspiringsquire.SubclassWindow( GetDlgItem( IDC_LINK_ASPIRINGSQUIRE ) );
 
 		m_link_kode54.SetLabel( _T( "Windows front-end by Chris Moeller" ) );
-		m_link_kode54.SetHyperLink( _T( "http://static.morbo.org/kode54/" ) );
+		m_link_kode54.SetHyperLink( _T( "http://kode54.foobar2000.org/" ) );
 		m_link_kode54.SubclassWindow( GetDlgItem( IDC_LINK_KODE54 ) );
 
 		{

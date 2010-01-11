@@ -59,9 +59,9 @@
 #define IDS_PAUSED                      40101
 #define IDS_REWINDING                   40102
 #define IDS_PLAYING                     40103
-#define IDS_ROM_TITLE                   40104
-#define IDS_ROM_FILTER                  40105
-#define IDS_ROM_EXTENSION               40106
+#define IDS_CART_TITLE                  40104
+#define IDS_CART_FILTER                 40105
+#define IDS_CART_EXTENSION              40106
 #define IDS_SNAP_LOAD_TITLE             40107
 #define IDS_SNAP_SAVE_TITLE             40108
 #define IDS_SNAP_FILTER                 40109

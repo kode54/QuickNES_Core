@@ -260,12 +260,12 @@ BEGIN
     BEGIN
         BLOCK "040904B0"
         BEGIN
-            VALUE "FileDescription", "Nes_Emu Module"
+            VALUE "FileDescription", "QuickNES Module"
             VALUE "FileVersion", "1, 0, 0, 1"
-            VALUE "InternalName", "Nes_Emu"
+            VALUE "InternalName", "QuickNES"
             VALUE "LegalCopyright", "Copyright 2005"
-            VALUE "OriginalFilename", "Nes_Emu.exe"
-            VALUE "ProductName", "Nes_Emu Module"
+            VALUE "OriginalFilename", "QuickNES.exe"
+            VALUE "ProductName", "QuickNES Module"
             VALUE "ProductVersion", "1, 0, 0, 1"
         END
     END
@@ -283,12 +283,12 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDR_MAINFRAME           "Nes_Emu"
+    IDR_MAINFRAME           "QuickNES"
 END
 
 STRINGTABLE 
 BEGIN
-    ID_FILE_OPEN            "Open a NES ROM image\nOpen"
+    ID_FILE_OPEN            "Open a NES cartridge file\nOpen"
 END
 
 STRINGTABLE 
@@ -341,9 +341,9 @@ BEGIN
     IDS_PAUSED              "Paused"
     IDS_REWINDING           "Rewinding"
     IDS_PLAYING             "Playing"
-    IDS_ROM_TITLE           "Select a ROM image..."
-    IDS_ROM_FILTER          "NES ROM Images|*.NES|"
-    IDS_ROM_EXTENSION       "nes"
+    IDS_CART_TITLE          "Select a cartridge file..."
+    IDS_CART_FILTER         "NES cartridge files|*.NES|"
+    IDS_CART_EXTENSION      "nes"
     IDS_SNAP_LOAD_TITLE     "Select a snapshot..."
     IDS_SNAP_SAVE_TITLE     "Save snapshot..."
     IDS_SNAP_FILTER         "Snapshot files|*.SAV|"
@@ -354,7 +354,7 @@ END
 STRINGTABLE 
 BEGIN
     IDS_FILM_SAVE_TITLE     "Save film..."
-    IDS_FILM_FILTER         "Nes_Emu film files|*.FILM|"
+    IDS_FILM_FILTER         "QuickNES film files|*.FILM|"
     IDS_FILM_EXTENSION      "film"
     IDS_ERROR               "Error"
     IDS_ERROR_CONFIG        "Setting up configuration directories"

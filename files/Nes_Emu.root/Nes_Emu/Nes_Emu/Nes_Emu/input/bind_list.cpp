@@ -8,45 +8,6 @@
 
 #include "nes_emu/abstract_file.h"
 
-class Joypad_Processor {
-public:
-    Joypad_Processor() : prev( 0 ), mask( ~0x50 ) { }
- 
-    void clock_turbo() { mask ^= 0x300; }
- 
-    // bits 8 and 9 generate turbo into bits 0 and 1
-    int process( int joypad );
- 
-private:
-    int prev;
-    int mask;
-};
- 
-int Joypad_Processor::process( int joypad )
-{
-    int changed = prev ^ joypad;
-    prev = joypad;
- 
-    // reset turbo if button just pressed, to avoid delaying button press
-    mask |= changed & 0x300 & joypad;
- 
-    // prevent left+right and up+down (prefer most recent one pressed)
-    if ( changed & 0xf0 )
-    {
-        int diff = joypad & ~mask;
- 
-        if ( diff & 0x30 )
-            mask ^= 0x30;
- 
-        if ( diff & 0xc0 )
-            mask ^= 0xc0;
-    }
- 
-    // mask and combine turbo bits
-    joypad &= mask;
-    return (joypad >> 8 & 3) | joypad;
-}
-
 class bind_list_i : public bind_list
 {
 	guid_container * guids;
@@ -57,7 +18,7 @@ class bind_list_i : public bind_list
 
 	bool rapid_enable[2];
 
-	Joypad_Processor processor[2];
+	Joypad_Filter filter[2];
 
 	struct bind
 	{
@@ -407,13 +368,13 @@ public:
 	{
 		assert( joy <= 1 );
 		register unsigned in = ( this->joy[ joy ] & ~3 ) | ( ( this->joy[ joy ] & 3 ) << ( rapid_enable[ joy ] * 8 ) );
-		return processor[ joy ].process( in );
+		return filter[ joy ].process( in );
 	}
 
 	virtual void strobe( unsigned joy )
 	{
 		assert( joy <= 1 );
-		processor[ joy ].clock_turbo();
+		filter[ joy ].clock_turbo();
 	}
 
 	virtual int get_direction()

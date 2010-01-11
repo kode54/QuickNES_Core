@@ -10,37 +10,41 @@
 #pragma comment( lib, "dxguid.lib" )
 #pragma comment( lib, "winmm.lib" )
 
+#define USE_TIMER
+
 class display_i_ddraw : public display
 {
 	HWND                 hWnd;
 
 	RECT                 rcWindow;
-	RECT                 rcLast;
+	//RECT                 rcLast;
 
 	LPDIRECTDRAW7        lpDD;
 	LPDIRECTDRAWSURFACE7 lpsPrimary;
 	LPDIRECTDRAWSURFACE7 lpsFramebuffer;
 	LPDIRECTDRAWCLIPPER  lpDDClipper;
 
-	LPDIRECTDRAWPALETTE  lppPalette;
+	//LPDIRECTDRAWPALETTE  lppPalette;
 
-	/*LPVOID               lpSurface;
-	unsigned             dwPitch;*/
+	LPVOID               lpSurface;
+	unsigned             dwPitch;
 
-	unsigned             surface_width, surface_height, bit_depth;
+	unsigned             surface_width, surface_height;//, bit_depth;
 	
-	unsigned             red_mask, green_mask, blue_mask;
+	//unsigned             red_mask, green_mask, blue_mask;
 
-	unsigned char      * lpFakeSurface;
+	/*unsigned char      * lpFakeSurface;
 
-	unsigned char        palette[ 256 ][ 4 ];
+	unsigned char        palette[ 256 ][ 4 ];*/
 
+#ifdef USE_TIMER
 	volatile unsigned    wait_lastscanline;
 	volatile unsigned    wait_screenheight;
 	volatile unsigned    wait_firstline;
 	HANDLE               wait_event;
 	UINT                 wait_timerres;
 	UINT                 wait_timerid;
+#endif
 
 public:
 	display_i_ddraw()
@@ -54,18 +58,20 @@ public:
 		lpsFramebuffer = 0;
 		lpDDClipper = 0;
 
-		lppPalette = 0;
+		/*lppPalette = 0;
 
-		lpFakeSurface = 0;
+		lpFakeSurface = 0;*/
 
+#ifdef USE_TIMER
 		wait_event = 0;
 		wait_timerres = 0;
 		wait_timerid = 0;
+#endif
 	}
 
 	virtual ~display_i_ddraw()
 	{
-		if ( lpFakeSurface )
+		/*if ( lpFakeSurface )
 		{
 			delete [] lpFakeSurface;
 			lpFakeSurface = 0;
@@ -75,8 +81,9 @@ public:
 		{
 			lppPalette->Release();
 			lppPalette = 0;
-		}
+		}*/
 
+#ifdef USE_TIMER
 		if ( wait_timerid )
 		{
 			StopTimer();
@@ -87,6 +94,7 @@ public:
 			CloseHandle( wait_event );
 			wait_event = 0;
 		}
+#endif
 
 		if ( lpsFramebuffer )
 		{
@@ -138,7 +146,7 @@ public:
 		if ( lpDD->CreateSurface( &ddsd, & lpsPrimary, 0 ) != DD_OK )
 			return "Creating primary surface";
 
-		DDPIXELFORMAT format;
+		/*DDPIXELFORMAT format;
 		format.dwSize = sizeof(DDPIXELFORMAT);
 		
 		if ( lpsPrimary->GetPixelFormat( & format ) != DD_OK )
@@ -148,7 +156,7 @@ public:
 		
 		red_mask = format.dwRBitMask;
 		green_mask = format.dwGBitMask;
-		blue_mask = format.dwBBitMask;
+		blue_mask = format.dwBBitMask;*/
 
 		if ( lpDD->CreateClipper( 0, & lpDDClipper, 0 ) != DD_OK )
 			return "Creating clipper";
@@ -159,6 +167,7 @@ public:
 		if ( lpsPrimary->SetClipper( lpDDClipper ) != DD_OK )
 			return "Assigning clipper";
 
+		/*
 		if ( bit_depth == 8 )
 		{
 			LPPALETTEENTRY pal = new PALETTEENTRY[ 256 ];
@@ -190,12 +199,25 @@ public:
 
 			if ( lpsPrimary->SetPalette( lppPalette ) != DD_OK )
 				return "Assigning palette to primary surface";
-		}
+		}*/
 
-		ddsd.dwFlags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH;
+		ddsd.dwFlags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT;
 		ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN;
-		ddsd.dwWidth = 256 + 4;
-		ddsd.dwHeight = 240 + 4;
+		ddsd.dwWidth = buffer_width;
+		ddsd.dwHeight = buffer_height;
+		ddsd.ddpfPixelFormat.dwSize = sizeof( ddsd.ddpfPixelFormat );
+		ddsd.ddpfPixelFormat.dwFlags = DDPF_RGB;
+#if 1
+		ddsd.ddpfPixelFormat.dwRGBBitCount = 16;
+		ddsd.ddpfPixelFormat.dwRBitMask = 0xF800;
+		ddsd.ddpfPixelFormat.dwGBitMask = 0x07E0;
+		ddsd.ddpfPixelFormat.dwBBitMask = 0x001F;
+#else
+		ddsd.ddpfPixelFormat.dwRGBBitCount = 32;
+		ddsd.ddpfPixelFormat.dwRBitMask = 0xFF0000;
+		ddsd.ddpfPixelFormat.dwGBitMask = 0x00FF00;
+		ddsd.ddpfPixelFormat.dwBBitMask = 0x0000FF;
+#endif
 
 		if ( lpDD->CreateSurface( & ddsd, & lpsFramebuffer, NULL ) != DD_OK )
 			return "Creating offscreen surface";
@@ -203,22 +225,24 @@ public:
 		clear();
 
 		// hee
-		rcLast.left = 0;
+		/*rcLast.left = 0;
 		rcLast.top = 0;
 		rcLast.right = 1;
-		rcLast.bottom = 1;
+		rcLast.bottom = 1;*/
 
+#ifdef USE_TIMER
 		wait_event = CreateEvent( NULL, FALSE, FALSE, NULL );
 
 		if ( ! StartTimer() )
 		{
 			return "Starting timer";
 		}
+#endif
 
 		surface_width = buffer_width;
 		surface_height = buffer_height;
 
-		lpFakeSurface = new unsigned char[ surface_width * surface_height ];
+		//lpFakeSurface = new unsigned char[ surface_width * surface_height ];
 
 		return 0;
 	}
@@ -230,9 +254,11 @@ public:
 		GetClientRect( hWnd, & rcWindow );
 		OffsetRect( & rcWindow, pt.x, pt.y );
 
+#ifdef USE_TIMER
 		wait_screenheight = GetSystemMetrics( SM_CYSCREEN );
 		wait_firstline = min( rcWindow.bottom, wait_screenheight );
 		wait_lastscanline = 0;
+#endif
 	}
 
 	virtual const char* lock_framebuffer( void *& buffer, unsigned & pitch )
@@ -240,8 +266,26 @@ public:
 		if ( lpsFramebuffer == 0 )
 			return "No surface to lock";
 
-		buffer = lpFakeSurface;
-		pitch = surface_width;
+		DDSURFACEDESC2 ddsd;
+		memset( &ddsd, 0, sizeof( ddsd ) );
+		ddsd.dwSize = sizeof( ddsd );
+		ddsd.dwFlags = DDSD_LPSURFACE | DDSD_PITCH;
+
+		HRESULT hRes = lpsFramebuffer->Lock( 0, &ddsd, DDLOCK_WRITEONLY | DDLOCK_NOSYSLOCK | DDLOCK_SURFACEMEMORYPTR, 0 );
+
+		if ( hRes == DDERR_SURFACELOST )
+		{
+			if ( lpsFramebuffer->Restore() != DD_OK )
+				return "Surface lost";
+
+			return "Surface restored";
+		}
+
+		if ( hRes != DD_OK )
+			return "Locking surface";
+
+		buffer = lpSurface = ddsd.lpSurface;
+		pitch = dwPitch = ddsd.lPitch;
 
 		return 0;
 	}
@@ -251,10 +295,15 @@ public:
 		if ( lpsFramebuffer == 0 )
 			return "No surface to unlock";
 
+		lpsFramebuffer->Unlock( ( LPRECT ) lpSurface );
+
+		lpSurface = 0;
+		dwPitch = 0;
+
 		return 0;
 	}
 
-	virtual const char* update_palette( const unsigned char * source_pal, const unsigned char * source_list, unsigned color_first, unsigned color_count )
+	/*virtual const char* update_palette( const unsigned char * source_pal, const unsigned char * source_list, unsigned color_first, unsigned color_count )
 	{
 		switch ( bit_depth )
 		{
@@ -405,42 +454,17 @@ public:
 		}
 
 		return 0;
-	}
+	}*/
 
-	virtual const char* paint( RECT rcSource, bool wait )
+	virtual const char* paint( /*RECT rcSource,*/ bool wait )
 	{
 		if ( lpsFramebuffer == 0 )
 			return "No framebuffer to paint from";
 
-		/*if ( lpSurface != 0 )
-			return "Framebuffer locked";*/
+		if ( lpSurface != 0 )
+			return "Framebuffer locked";
 
-		LPVOID lpSurface;
-		unsigned dwPitch;
-
-		{
-			DDSURFACEDESC2 ddsd;
-			memset( &ddsd, 0, sizeof( ddsd ) );
-			ddsd.dwSize = sizeof( ddsd );
-			ddsd.dwFlags = DDSD_LPSURFACE | DDSD_PITCH;
-
-			HRESULT hRes = lpsFramebuffer->Lock( 0, &ddsd, DDLOCK_WRITEONLY | DDLOCK_NOSYSLOCK | DDLOCK_SURFACEMEMORYPTR, 0 );
-
-			if ( hRes == DDERR_SURFACELOST )
-			{
-				if ( lpsFramebuffer->Restore() != DD_OK )
-					return "Surface lost";
-
-				return 0;
-			}
-
-			if ( hRes != DD_OK )
-				return "Locking surface";
-
-			lpSurface = ddsd.lpSurface;
-			dwPitch = ddsd.lPitch;
-		}
-
+		/*
 		unsigned r = 0;
 
 		for ( int y = rcSource.top; y < rcSource.bottom; ++y )
@@ -486,25 +510,30 @@ public:
 
 		if ( lpsFramebuffer->Unlock( ( LPRECT ) lpSurface ) != DD_OK )
 			return "Unlocking surface";
+		*/
 
-		//if ( lpDD->WaitForVerticalBlank( DDWAITVB_BLOCKBEGIN, NULL ) != DD_OK )
-		//	return "Waiting for vertical blank";
-		if ( wait ) WaitForSingleObject( wait_event, 100 );
+		if ( wait )
+#ifndef USE_TIMER
+		if ( lpDD->WaitForVerticalBlank( DDWAITVB_BLOCKBEGIN, NULL ) != DD_OK )
+			return "Waiting for vertical blank";
+#else
+		WaitForSingleObject( wait_event, 100 );
+#endif
 
-		rcSource.right -= rcSource.left;
+		/*rcSource.right -= rcSource.left;
 		rcSource.bottom -= rcSource.top;
 		rcSource.left = 0;
 		rcSource.top = 0;
 
-		rcLast = rcSource;
+		rcLast = rcSource;*/
 
-		HRESULT hRes = lpsPrimary->Blt( & rcWindow, lpsFramebuffer, & rcSource, DDBLT_ASYNC, 0 );
+		HRESULT hRes = lpsPrimary->Blt( & rcWindow, lpsFramebuffer, 0 /*& rcSource*/, DDBLT_ASYNC, 0 );
 		if ( hRes == DDERR_SURFACELOST )
 		{
 			const char * err = restore_surfaces();
 			if ( err ) return err;
 
-			hRes = lpsPrimary->Blt( &rcWindow, lpsFramebuffer, &rcSource, DDBLT_ASYNC, 0 );
+			hRes = lpsPrimary->Blt( &rcWindow, lpsFramebuffer, 0 /*&rcSource*/, DDBLT_ASYNC, 0 );
 		}
 
 		if ( hRes == DDERR_SURFACELOST )
@@ -520,7 +549,7 @@ public:
 
 	virtual void repaint()
 	{
-		if ( lpsPrimary->Blt( & rcWindow, lpsFramebuffer, & rcLast, DDBLT_ASYNC, 0 ) == DDERR_SURFACELOST )
+		if ( lpsPrimary->Blt( & rcWindow, lpsFramebuffer, 0 /*& rcLast*/, DDBLT_ASYNC, 0 ) == DDERR_SURFACELOST )
 			restore_surfaces();
 	}
 
@@ -545,6 +574,7 @@ private:
 		return 0;
 	}
 
+#ifdef USE_TIMER
 	bool StartTimer()
 	{
 		bool        res = false;
@@ -600,7 +630,6 @@ private:
 		}
 	}
 
-public:
 	void timer_proc( UINT id, UINT msg, DWORD_PTR dw1, DWORD_PTR dw2 )
 	{
 		DWORD scanline;
@@ -618,6 +647,7 @@ public:
 			wait_lastscanline = scanline;
 		}
 	}
+#endif
 };
 
 display * create_display()
