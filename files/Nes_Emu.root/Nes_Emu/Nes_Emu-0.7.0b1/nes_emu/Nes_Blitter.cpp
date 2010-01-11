@@ -6,7 +6,7 @@
 #include "blargg_source.h"
 
 #ifndef NES_BLITTER_OUT_DEPTH
-	#define NES_BLITTER_OUT_DEPTH 16
+	#define NES_BLITTER_OUT_DEPTH 24
 #endif
 
 Nes_Blitter::Nes_Blitter() { ntsc = 0; }
@@ -58,6 +58,7 @@ void Nes_Blitter::blit( Nes_Emu& emu, void* out, long out_pitch )
 		burst_phase = (burst_phase + 1) % nes_ntsc_burst_count;
 		
 		// assemble two 16-bit pixels into a 32-bit int for better performance
+#if NES_BLITTER_OUT_DEPTH == 16
 		#if BLARGG_BIG_ENDIAN
 			#define COMBINE_PIXELS right |= left << 16;
 		#else
@@ -73,6 +74,10 @@ void Nes_Blitter::blit( Nes_Emu& emu, void* out, long out_pitch )
 				NES_NTSC_RGB_OUT( (i % 7), right, NES_BLITTER_OUT_DEPTH );\
 				COMBINE_PIXELS;\
 			}
+#else
+		#define OUT_PIXEL( i ) \
+			NES_NTSC_RGB_OUT( (i % 7), line_out [i], NES_BLITTER_OUT_DEPTH );
+#endif
 			
 		for ( int n = chunk_count; n; --n )
 		{
@@ -104,9 +109,13 @@ void Nes_Blitter::blit( Nes_Emu& emu, void* out, long out_pitch )
 			OUT_PIXEL( 11 );
 			OUT_PIXEL( 12 );
 			OUT_PIXEL( 13 );
-			
+
+#if NES_BLITTER_OUT_DEPTH == 16
 			line_out [6] = right;
 			line_out += 7;
+#else
+			line_out += 14;
+#endif
 		}
 	}
 }

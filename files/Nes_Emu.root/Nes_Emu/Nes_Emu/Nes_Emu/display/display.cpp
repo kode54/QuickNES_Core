@@ -207,7 +207,7 @@ public:
 		ddsd.dwHeight = buffer_height;
 		ddsd.ddpfPixelFormat.dwSize = sizeof( ddsd.ddpfPixelFormat );
 		ddsd.ddpfPixelFormat.dwFlags = DDPF_RGB;
-#if 1
+#if 0
 		ddsd.ddpfPixelFormat.dwRGBBitCount = 16;
 		ddsd.ddpfPixelFormat.dwRBitMask = 0xF800;
 		ddsd.ddpfPixelFormat.dwGBitMask = 0x07E0;
