@@ -342,7 +342,7 @@ BEGIN
     IDS_REWINDING           "Rewinding"
     IDS_PLAYING             "Playing"
     IDS_CART_TITLE          "Select a cartridge file..."
-    IDS_CART_FILTER         "NES cartridge files|*.NES|"
+    IDS_CART_FILTER         "NES cartridge files|*.NES;*.NES.GZ|"
     IDS_CART_EXTENSION      "nes"
     IDS_SNAP_LOAD_TITLE     "Select a snapshot..."
     IDS_SNAP_SAVE_TITLE     "Save snapshot..."

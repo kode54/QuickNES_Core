@@ -33,7 +33,7 @@ Nes_Film_Data::Nes_Film_Data()
 	BOOST_STATIC_ASSERT( sizeof active->ppu [0] % 4 == 0 );
 	BOOST_STATIC_ASSERT( sizeof active->mapper [0] % 4 == 0 );
 	BOOST_STATIC_ASSERT( sizeof active->states [0] % 4 == 0 );
-	BOOST_STATIC_ASSERT( offsetof (block_t,joypad0) % 4 == 0 );
+	//BOOST_STATIC_ASSERT( offsetof (block_t,joypad0) % 4 == 0 );  // XXX
 }
 
 #ifndef NDEBUG

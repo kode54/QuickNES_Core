@@ -3,7 +3,7 @@
 
 #include <tchar.h>
 
-#include <boost/static_assert.hpp>
+//#include <boost/static_assert.hpp>
 
 struct core_config_t
 {
