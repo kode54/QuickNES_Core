@@ -209,11 +209,9 @@ namespace musicmusic
 		RECT rc_client;
 		GetClientRect(get_wnd(), &rc_client);
 		unsigned cx = MulDiv(rc_client.bottom,9,20);
-		unsigned rmin, rmax;
-		get_range( rmin, rmax );
 		rc->top = 2;
 		rc->bottom = rc_client.bottom - 2;
-		rc->left = ( rmax - rmin ) ? MulDiv(pos-range_min, rc_client.right-cx, range_max - range_min) : 0;
+		rc->left = ( range_max - range_min ) ? MulDiv(pos-range_min, rc_client.right-cx, range_max - range_min) : 0;
 		rc->right = rc->left + cx;
 	}
 
