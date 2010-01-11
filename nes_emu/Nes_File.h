@@ -1,22 +1,23 @@
 
 // NES block-oriented file access
 
-// Nes_Emu 0.5.6. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.7.0
 
 #ifndef NES_FILE_H
 #define NES_FILE_H
 
 #include "blargg_common.h"
 #include "abstract_file.h"
-#include "nes_state.h"
+#include "nes_data.h"
 
+// Writes a structured file
 class Nes_File_Writer : public Data_Writer {
 public:
 	Nes_File_Writer();
 	~Nes_File_Writer();
 	
 	// Begin writing file with specified signature tag
-	blargg_err_t begin( Data_Writer*, nes_tag_t );
+	blargg_err_t begin( Auto_File_Writer, nes_tag_t );
 	
 	// Begin tagged group
 	blargg_err_t begin_group( nes_tag_t );
@@ -25,7 +26,7 @@ public:
 	blargg_err_t write_block( nes_tag_t, void const*, long size );
 	
 	// Write tagged block header. 'Size' bytes must be written before next block.
-	blargg_err_t write_block( nes_tag_t, long size );
+	blargg_err_t write_block_header( nes_tag_t, long size );
 	
 	// Write data to current block
 	error_t write( void const*, long );
@@ -37,12 +38,13 @@ public:
 	blargg_err_t end();
 	
 private:
-	Data_Writer* out;
+	Auto_File_Writer out;
 	long write_remain;
 	int depth_;
 	blargg_err_t write_header( nes_tag_t tag, long size );
 };
 
+// Reads a structured file
 class Nes_File_Reader : public Data_Reader {
 public:
 	Nes_File_Reader();
@@ -52,7 +54,7 @@ public:
 	void enable_checksums( bool = true );
 	
 	// Begin reading file. Until next_block() is called, block_tag() yields tag for file.
-	blargg_err_t begin( Data_Reader* );
+	blargg_err_t begin( Auto_File_Reader );
 	
 	// Read header of next block in current group
 	blargg_err_t next_block();
@@ -93,7 +95,7 @@ public:
 	// True if all data has been read
 	bool done() const { return depth() == 0 && block_type() == group_end; }
 private:
-	Data_Reader* in;
+	Auto_File_Reader in;
 	nes_block_t h;
 	block_type_t block_type_;
 	int depth_;

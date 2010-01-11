@@ -1,13 +1,13 @@
 
 // Namco 106 mapper
 
-// Nes_Emu 0.5.6. http://www.slack.net/~ant/
+// Nes_Emu 0.7.0. http://www.slack.net/~ant/
 
 #include "Nes_Mapper.h"
 
 #include "Nes_Namco_Apu.h"
 
-/* Copyright (C) 2004-2005 Shay Green. This module is free software; you
+/* Copyright (C) 2004-2006 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
 General Public License as published by the Free Software Foundation; either
 version 2.1 of the License, or (at your option) any later version. This
@@ -18,7 +18,7 @@ more details. You should have received a copy of the GNU Lesser General
 Public License along with this module; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
-#include BLARGG_SOURCE_BEGIN
+#include "blargg_source.h"
 
 // to do: CHR mapping and nametable handling needs work
 
@@ -65,7 +65,7 @@ public:
 		intercept_writes( 0x5000, 0x1000 );
 		intercept_reads ( 0x5000, 0x1000 );
 		
-		for ( int i = 0; i < sizeof regs; i++ )
+		for ( int i = 0; i < (int) sizeof regs; i++ )
 			write( 0, 0x8000 + i * 0x800, regs [i] );
 	}
 	
@@ -82,12 +82,21 @@ public:
 	
 	virtual void run_until( nes_time_t end_time )
 	{
+		long count = irq_ctr + (end_time - last_time);
 		if ( irq_ctr & 0x8000 )
 		{
-			irq_ctr += end_time - last_time;
-			if ( !(irq_ctr & 0x8000) )
+			if ( count > 0xffff )
+			{
+				count = 0xffff;
 				irq_pending = true;
+			}
 		}
+		else if ( count > 0x7fff )
+		{
+			count = 0x7fff;
+		}
+		
+		irq_ctr = count;
 		last_time = end_time;
 	}
 	
@@ -123,34 +132,9 @@ public:
 		return Nes_Mapper::read( time, addr );
 	}
 	
-	virtual void write( nes_time_t time, nes_addr_t addr, int data )
+	virtual bool write_intercepted( nes_time_t time, nes_addr_t addr, int data )
 	{
-		if ( addr & 0x8000 )
-		{
-			int reg = addr >> 11 & 0x0f;
-			regs [reg] = data;
-			
-			int prg_bank = reg - 0x0c;
-			if ( (unsigned) prg_bank < 3 )
-			{
-				set_prg_bank( 0x8000 | (prg_bank << bank_8k), bank_8k, data & 0x3f );
-				if ( reg == 12 && data & 0x40 )
-					mirror_vert();
-			}
-			else if ( reg < 8 )
-			{
-				set_chr_bank( reg * 0x400, bank_1k, data );
-			}
-			else if ( reg < 0x0c )
-			{
-				mirror_manual( regs [8] & 1, regs [9] & 1, regs [10] & 1, regs [11] & 1 );
-			}
-			else
-			{
-				sound.write_addr( data );
-			}
-		}
-		else if ( addr == 0x4800 )
+		if ( addr == 0x4800 )
 		{
 			sound.write_data( time, data );
 		}
@@ -168,7 +152,35 @@ public:
 		}
 		else
 		{
-			Nes_Mapper::write( time, addr, data );
+			return false;
+		}
+		
+		return true;
+	}
+	
+	virtual void write( nes_time_t, nes_addr_t addr, int data )
+	{
+		int reg = addr >> 11 & 0x0F;
+		regs [reg] = data;
+		
+		int prg_bank = reg - 0x0c;
+		if ( (unsigned) prg_bank < 3 )
+		{
+			if ( prg_bank == 0 && (data & 0x40) )
+				mirror_vert();
+			set_prg_bank( 0x8000 | (prg_bank << bank_8k), bank_8k, data & 0x3F );
+		}
+		else if ( reg < 8 )
+		{
+			set_chr_bank( reg * 0x400, bank_1k, data );
+		}
+		else if ( reg < 0x0c )
+		{
+			mirror_manual( regs [8] & 1, regs [9] & 1, regs [10] & 1, regs [11] & 1 );
+		}
+		else
+		{
+			sound.write_addr( data );
 		}
 	}
 };
@@ -177,5 +189,25 @@ void register_namco106_mapper();
 void register_namco106_mapper()
 {
 	register_mapper<Mapper_Namco106>( 19 );
+}
+
+// in the most obscure place in case crappy linker is used
+void register_optional_mappers();
+void register_optional_mappers()
+{
+	extern void register_misc_mappers();
+	register_misc_mappers();
+	
+	extern void register_vrc6_mapper();
+	register_vrc6_mapper();
+	
+	extern void register_mmc5_mapper();
+	register_mmc5_mapper();
+	
+	extern void register_fme7_mapper();
+	register_fme7_mapper();
+	
+	extern void register_namco106_mapper();
+	register_namco106_mapper();
 }
 

@@ -1,7 +1,7 @@
 
 // NES 2A03 APU sound chip emulator
 
-// Nes_Snd_Emu 0.1.7. Copyright (C) 2003-2005 Shay Green. GNU LGPL license.
+// Nes_Snd_Emu 0.1.7
 
 #ifndef NES_APU_H
 #define NES_APU_H
@@ -11,8 +11,8 @@ typedef unsigned nes_addr_t; // 16-bit memory address
 
 #include "Nes_Oscs.h"
 
-struct apu_snapshot_t;
-class Nonlinear_Buffer;
+struct apu_state_t;
+class Nes_Buffer;
 
 class Nes_Apu {
 public:
@@ -53,18 +53,14 @@ public:
 	// any audible click.
 	void reset( bool pal_timing = false, int initial_dmc_dac = 0 );
 	
-	// Save/load snapshot of exact emulation state
-	void save_snapshot( apu_snapshot_t* out ) const;
-	void load_snapshot( apu_snapshot_t const& );
+	// Save/load exact emulation state
+	void save_state( apu_state_t* out ) const;
+	void load_state( apu_state_t const& );
 	
 	// Set overall volume (default is 1.0)
 	void volume( double );
 	
-	// Reset oscillator amplitudes. Must be called when clearing buffer while
-	// using non-linear sound.
-	void buffer_cleared();
-	
-	// Set treble equalization (see notes.txt).
+	// Set treble equalization (see notes.txt)
 	void treble_eq( const blip_eq_t& );
 	
 	// Set sound output of specific oscillator to buffer. If buffer is NULL,
@@ -84,7 +80,7 @@ public:
 	// IRQ will occur, returns no_irq.
 	enum { no_irq = LONG_MAX / 2 + 1 };
 	enum { irq_waiting = 0 };
-	nes_time_t earliest_irq() const;
+	nes_time_t earliest_irq( nes_time_t ) const;
 	
 	// Count number of DMC reads that would occur if 'run_until( t )' were executed.
 	// If last_read is not NULL, set *last_read to the earliest time that
@@ -104,6 +100,8 @@ private:
 	void enable_nonlinear( double volume );
 	static double nonlinear_tnd_gain() { return 0.75; }
 private:
+	friend struct Nes_Dmc;
+	
 	// noncopyable
 	Nes_Apu( const Nes_Apu& );
 	Nes_Apu& operator = ( const Nes_Apu& );
@@ -133,24 +131,25 @@ private:
 	void state_restored();
 	void run_until_( nes_time_t );
 	
-	friend struct Nes_Dmc;
+	// TODO: remove
+	friend class Nes_Core;
 };
 
 inline void Nes_Apu::osc_output( int osc, Blip_Buffer* buf )
 {
-	assert(( "Nes_Apu::osc_output(): Index out of range", 0 <= osc && osc < osc_count ));
+	assert( (unsigned) osc < osc_count );
 	oscs [osc]->output = buf;
 }
 
-inline nes_time_t Nes_Apu::earliest_irq() const
+inline nes_time_t Nes_Apu::earliest_irq( nes_time_t ) const
 {
 	return earliest_irq_;
 }
 
 inline void Nes_Apu::dmc_reader( int (*func)( void*, nes_addr_t ), void* user_data )
 {
-	dmc.rom_reader_data = user_data;
-	dmc.rom_reader = func;
+	dmc.prg_reader_data = user_data;
+	dmc.prg_reader = func;
 }
 
 inline void Nes_Apu::irq_notifier( void (*func)( void* user_data ), void* user_data )

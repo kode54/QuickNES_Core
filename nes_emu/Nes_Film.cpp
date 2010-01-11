@@ -1,13 +1,12 @@
 
-// Nes_Emu 0.5.6. http://www.slack.net/~ant/
+// Nes_Emu 0.7.0. http://www.slack.net/~ant/
 
 #include "Nes_Film.h"
 
 #include <string.h>
 #include <stdlib.h>
-#include "blargg_endian.h"
 
-/* Copyright (C) 2004-2005 Shay Green. This module is free software; you
+/* Copyright (C) 2004-2006 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
 General Public License as published by the Free Software Foundation; either
 version 2.1 of the License, or (at your option) any later version. This
@@ -18,53 +17,133 @@ more details. You should have received a copy of the GNU Lesser General
 Public License along with this module; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
-#include BLARGG_SOURCE_BEGIN
+#include "blargg_source.h"
 
-Nes_Film::Nes_Film( frame_count_t p )
-{
-	for ( int i = 0; i < max_joypads; i++ )
-		joypad_data [i] = NULL;
-	clear( p );
-}
+nes_tag_t const joypad_data_tag = FOUR_CHAR('JOYP');
 
-Nes_Film::~Nes_Film()
-{
-	clear();
-}
+Nes_Film::Nes_Film() { clear( 60 * 60 ); }
+
+Nes_Film::~Nes_Film() { }
 
 void Nes_Film::clear( frame_count_t new_period )
 {
 	period_ = new_period;
-	offset = 0;
-	begin_ = 0;
-	end_ = 0;
+	end_ = begin_ = -invalid_frame_count;
+	time_offset = 0;
 	has_joypad_sync_ = true;
+	has_second_joypad = false;
+	data.clear( new_period );
+}
+
+inline int Nes_Film::calc_block_count( frame_count_t new_end ) const
+{
+	// usually one block extra than absolutely needed
+	return (new_end - time_offset) / data.period() + 2;
+}
+
+blargg_err_t Nes_Film::resize( frame_count_t new_end )
+{
+	blargg_err_t err = data.resize( calc_block_count( new_end ) );
+	if ( !err )
+		end_ = new_end;
+	return err;
+}
+
+inline int Nes_Film::calc_block( frame_count_t time, int* index_out ) const
+{
+	assert( time_offset <= time && time <= end() );
+	frame_count_t rel = time - time_offset;
+	int block = rel / data.period();
+	*index_out = rel - block * data.period();
+	return block;
+}
+
+Nes_Film::joypad_t Nes_Film::get_joypad( frame_count_t time ) const
+{
+	int index;
+	block_t const& b = data.read( calc_block( time, &index ) );
+	joypad_t result = b.joypad0 [index];
+	if ( b.joypads [1] )
+		result |= b.joypads [1] [index] << 8;
 	
-	for ( int i = 0; i < max_joypads; i++ )
+	return result;
+}
+
+blargg_err_t Nes_Film::set_joypad( frame_count_t time, joypad_t joypad )
+{
+	int index;
+	int block = calc_block( time, &index );
+	block_t* b = data.write( block );
+	CHECK_ALLOC( b );
+	b->joypad0 [index] = joypad & 0xFF;
+	
+	int joypad2 = joypad >> 8 & 0xFF;
+	if ( joypad2 && !b->joypads [1] )
+		CHECK_ALLOC( b = data.alloc_joypad2( block ) );
+	if ( b->joypads [1] )
 	{
-		free( joypad_data [i] );
-		joypad_data [i] = NULL;
+		b->joypads [1] [index] = joypad2;
+		has_second_joypad = true;
 	}
-	circular_len = 0;
-	!snapshots.resize( 0 );
+	return 0;
+}
+
+blargg_err_t Nes_Film::record_frame( frame_count_t time, joypad_t joypad, Nes_State_** out )
+{
+	if ( out )
+		*out = 0;
+	
+	if ( !contains( time ) )
+	{
+		require( blank() );
+		clear();
+		begin_ = end_ = time;
+		time_offset = time - time % period_;
+	}
+	
+	RETURN_ERR( resize( time + 1 ) );
+	
+	RETURN_ERR( set_joypad( time, joypad ) );
+	
+	// first check detects stale snapshot left after trimming film
+	if ( read_snapshot( time ).timestamp() > time || time == begin_ || time % period_ == 0 )
+	{
+		Nes_State_* ss = modify_snapshot( time );
+		CHECK_ALLOC( ss );
+		if ( out )
+			*out = ss;
+		if ( time != begin_ )
+			ss->set_timestamp( invalid_frame_count ); // caller might not take snapshot
+	}
+	
+	return 0;
+}
+
+Nes_State_ const* Nes_Film::nearest_snapshot( frame_count_t time ) const
+{
+	require( contains( time ) );
+	
+	if ( time > end() )
+		time = end();
+	
+	for ( int i = snapshot_index( time ); i >= 0; i-- )
+	{
+		Nes_State_ const& ss = snapshots( i );
+		if ( ss.timestamp() <= time ) // invalid timestamp will always be greater
+			return &ss;
+	}
+	
+	return 0;
 }
 
 frame_count_t Nes_Film::constrain( frame_count_t t ) const
 {
-	if ( t != invalid_frame_count && !empty() )
+	if ( t != invalid_frame_count && !blank() )
 	{
-		if ( t < begin_ )
-			t = begin_;
-		
-		if ( t > end_ )
-			t = end_;
+		if ( t < begin_ ) t = begin_;
+		if ( t > end_   ) t = end_;
 	}
 	return t;
-}
-
-bool Nes_Film::contains( frame_count_t t ) const
-{
-	return !empty() && begin() <= t && t <= end();
 }
 
 inline bool Nes_Film::contains_range( frame_count_t first, frame_count_t last ) const
@@ -72,403 +151,352 @@ inline bool Nes_Film::contains_range( frame_count_t first, frame_count_t last ) 
 	return begin_ <= first && first <= last && last <= end_;
 }
 
-blargg_err_t Nes_Film::make_circular( frame_count_t duration )
-{
-	// to do: way to catch second call, since film loop won't be expanded
-	if ( empty() || !circular_len )
-	{
-		if ( duration < length() )
-			duration = length();
-		
-		frame_count_t extra = 0;
-		if ( snapshots.size() > 0 )
-		{
-			int count = 0;
-			for ( int i = snapshot_index( end_ - 1) + 1; i--; )
-			{
-				if ( snapshots [i].timestamp() == invalid_frame_count )
-				{
-					count++;
-				}
-				else
-				{
-					if ( extra < count )
-						extra = count;
-					count = 0;
-				}
-			}
-		}
-		
-		dprintf( "Largest run of invalid snapshots: %d\n", (int) extra );
-		
-		extra = (extra + 1) * period_;
-		circular_len = capacity_() - extra;
-		if ( circular_len < duration )
-		{
-			BLARGG_RETURN_ERR( resize_( duration + extra, period_ ) );
-			circular_len = duration;
-		}
-		
-		frame_count_t old_begin = begin_;
-		
-		trim_circular();
-		assert( begin_ == old_begin );
-	}
-	
-	return blargg_success;
-}
-
-blargg_err_t Nes_Film::resize_joypad_data( int index, frame_count_t period )
-{
-	long size = joypad_history_size();
-	void* new_joypad = realloc( joypad_data [index], size );
-	BLARGG_CHECK_ALLOC( new_joypad );
-	if ( !joypad_data [index] )
-		memset( new_joypad, 0, size );
-	joypad_data [index] = (BOOST::uint8_t*) new_joypad;
-	return blargg_success;
-}
-
-blargg_err_t Nes_Film::resize_( frame_count_t duration, frame_count_t new_period )
-{
-	BLARGG_RETURN_ERR( snapshots.resize( (duration + new_period - 1) / new_period ) );
-	
-	for ( int i = 0; i < max_joypads; i++ )
-	{
-		if ( joypad_data [i] || i == 0 ) // always allocate first joypad
-			BLARGG_RETURN_ERR( resize_joypad_data( i, new_period ) );
-	}
-	
-	period_ = new_period;
-	
-	return blargg_success;
-}
-
-blargg_err_t Nes_Film::reserve( frame_count_t duration )
-{
-	duration += begin_ - offset;
-	if ( !circular_len && capacity_() < duration )
-		return resize_( duration, period_ );
-	
-	return blargg_success;
-}
-
-void Nes_Film::trim_circular()
-{
-	frame_count_t earliest = end_ - (circular_len ? circular_len : capacity_());
-	if ( begin_ < earliest )
-	{
-		require( circular_len ); // non-circular, so there must be space
-		begin_ = earliest;
-		circular_len = end_ - begin_; // make circular if it wasn't already
-	}
-}
-
-blargg_err_t Nes_Film::record_frame( frame_count_t time, joypad_t joypad, Nes_Snapshot** out )
-{
-	if ( out )
-		*out = NULL;
-	
-	// make space for new frame
-	frame_count_t needed = time + 1 - begin();
-	if ( !contains( time ) )
-	{
-		require( empty() );
-		offset = time - time % period_;
-		begin_ = time;
-		end_ = time;
-		needed = 1;
-	}
-	if ( !circular_len )
-		BLARGG_RETURN_ERR( reserve( needed + needed / 4 + 8 ) );
-	else if ( begin_ <= time - circular_len )
-		begin_ = time + 1 - circular_len;
-	
-	end_ = time + 1;
-	
-	long index = joypad_index( time );
-	//dprintf( "Record joypad index %d\n", index );
-	for ( int i = 0; i < max_joypads; i++, joypad >>= 8 )
-	{
-		if ( (joypad & 0xff) && !joypad_data [i] )
-		{
-			dprintf( "Adding joypad #%d track\n", i + 1 );
-			BLARGG_RETURN_ERR( resize_joypad_data( i, period() ) );
-		}
-		if ( joypad_data [i] )
-			joypad_data [i] [index] = joypad & 0xff;
-	}
-	
-	if ( out && (time == begin_ || time % period_ == 0) )
-		*out = &snapshots [snapshot_index( time )];
-	
-	return blargg_success;
-}
-
-Nes_Snapshot const* Nes_Film::nearest_snapshot( frame_count_t time ) const
-{
-	require( contains( time ) );
-	
-	if ( time >= end() )
-		time = end() - 1;
-	
-	int index = snapshot_index( time );
-	int first_index = 0;
-	if ( circular_len ) // to do: is this the correct index? off by one?
-		first_index = (index + 1) % snapshots.size();
-	while ( true )
-	{
-		Nes_Snapshot const& ss = snapshots [index];
-		if ( ss.timestamp() <= time ) // invalid timestamp will always be greater
-			return &ss;
-		
-		if ( index == first_index )
-			break;
-		
-		index = (index + snapshots.size() - 1) % snapshots.size();
-	}
-	
-	return NULL;
-}
-
 void Nes_Film::trim( frame_count_t first, frame_count_t last )
 {
-	if ( contains_range( first, last ) )
-	{
+	check( begin() <= first && first <= last && last <= end() );
+	
+	// TODO: this routine was broken; check thoroughly
+	
+	if ( first > begin_ )
 		begin_ = first;
+	
+	// preserve first snapshot, which might be before beginning
+	int first_block = (begin_ - time_offset) / data.period();
+	if ( first_block > 0 )
+	{
+		// TODO: pathological thrashing still possible
+		Nes_State_ const* ss = nearest_snapshot( begin_ );
+		if ( ss )
+			first_block = (ss->timestamp() - time_offset) / data.period();
+		time_offset += first_block * data.period();
+	}
+	
+	if ( begin_ <= last && last < end_ )
 		end_ = last;
-		// if made empty by trimming out all contents, won't be completely clear
-		check( !empty() );
-	}
-	else
-	{
-		require( false ); // tried to trim outside recording
-	}
+	data.trim( first_block, calc_block_count( end_ ) );
+	// be sure snapshot for beginning was preserved
+	assert( nearest_snapshot( begin_ ) );
 }
 
-Nes_Film::joypad_t Nes_Film::get_joypad( frame_count_t t ) const
+// Nes_Film_Joypad_Scanner
+
+// Simplifies scanning joypad data
+class Nes_Film_Joypad_Scanner {
+public:
+	// Begin scanning range and set public members for first block
+	Nes_Film_Joypad_Scanner( frame_count_t first, frame_count_t last, Nes_Film const& );
+	
+	int block;  // block index
+	int offset; // offset in data
+	int count;  // number of bytes
+	frame_count_t remain; // number of bytes remaining to scan
+	
+	// Pointer to temporary buffer of 'block_period' bytes. Cleared
+	// to zero before first use.
+	unsigned char* buf();
+	
+	// Go to next block. False if no more blocks.
+	bool next();
+	
+	~Nes_Film_Joypad_Scanner();
+private:
+	Nes_Film& film;
+	unsigned char* buf_;
+	void recalc_count();
+};
+
+inline unsigned char* Nes_Film_Joypad_Scanner::buf()
 {
-	// to do: this won't catch all bad times before beginning
-	assert( end_ - capacity_() <= t && t < end_ );
-	long index = joypad_index( t );
-	joypad_t result = 0;
-	//dprintf( "Read joypad index %d\n", index );
-	for ( int i = 0; i < max_joypads; i++ )
-	{
-		if ( joypad_data [i] )
-			result |= joypad_data [i] [index] << (i * 8);
-	}
-	return result;
+	if ( !buf_ )
+		buf_ = (unsigned char*) calloc( 1, film.data.period() );
+	return buf_;
 }
 
-// Read/write
-
-nes_tag_t const joypad_data_tag = 'JOYP';
-
-blargg_err_t Nes_Film_Writer::end( Nes_Film const& film, frame_count_t period,
-		frame_count_t first, frame_count_t last )
+inline void Nes_Film_Joypad_Scanner::recalc_count()
 {
-	BLARGG_RETURN_ERR( film.write_blocks( *this, period, first, last ) );
+	count = film.data.period() - offset;
+	if ( count > remain )
+		count = remain;
+}
+
+Nes_Film_Joypad_Scanner::Nes_Film_Joypad_Scanner( frame_count_t first, frame_count_t last,
+		Nes_Film const& f ) : film( *(Nes_Film*) &f )
+{
+	buf_ = 0;
+	remain = last - first;
+	block = film.calc_block( first, &offset );
+	recalc_count();
+	film.data.joypad_only( true );
+}
+
+Nes_Film_Joypad_Scanner::~Nes_Film_Joypad_Scanner()
+{
+	film.data.joypad_only( false );
+	free( buf_ );
+}
+
+bool Nes_Film_Joypad_Scanner::next()
+{
+	block++;
+	offset = 0;
+	remain -= count;
+	if ( remain <= 0 )
+		return false;
+	recalc_count();
+	return true;
+}
+
+// Nes_Film_Writer
+
+blargg_err_t Nes_Film_Writer::end( Nes_Film const& film, frame_count_t first,
+		frame_count_t last, frame_count_t period )
+{
+	RETURN_ERR( film.write_blocks( *this, first, last, period ) );
 	return Nes_File_Writer::end();
 }
 
-blargg_err_t Nes_Film::write( Data_Writer& out, frame_count_t period,
-		frame_count_t first, frame_count_t last ) const
+blargg_err_t Nes_Film::write( Auto_File_Writer out, frame_count_t first,
+		frame_count_t last, frame_count_t period ) const
 {
 	Nes_Film_Writer writer;
-	BLARGG_RETURN_ERR( writer.begin( &out ) );
-	return writer.end( *this, period, first, last );
+	RETURN_ERR( writer.begin( out ) );
+	return writer.end( *this, first, last, (period ? period : this->period()) );
 }
 
-static blargg_err_t write_snapshot( Nes_Snapshot const& ss, Nes_File_Writer& out )
+static blargg_err_t write_state( Nes_State_ const& ss, Nes_File_Writer& out )
 {
-	BLARGG_RETURN_ERR( out.begin_group( snapshot_file_tag ) );
-	BLARGG_RETURN_ERR( ss.write_blocks( out ) );
+	RETURN_ERR( out.begin_group( state_file_tag ) );
+	RETURN_ERR( ss.write_blocks( out ) );
 	return out.end_group();
 }
 
-blargg_err_t Nes_Film::write_blocks( Nes_File_Writer& out, frame_count_t period,
-		frame_count_t first, frame_count_t last ) const
+blargg_err_t Nes_Film::write_blocks( Nes_File_Writer& out, frame_count_t first,
+		frame_count_t last, frame_count_t period ) const
 {
 	require( contains_range( first, last ) );
-	
-	// find first snapshot that recording will begin with
-	Nes_Snapshot const* first_snapshot = nearest_snapshot( first );
-	require( first_snapshot );
-	assert( first_snapshot->timestamp() <= first );
+	require( nearest_snapshot( first ) );
+	frame_count_t first_snapshot = nearest_snapshot( first )->timestamp();
+	assert( first_snapshot <= first );
 	
 	// write info block
 	movie_info_t info;
 	memset( &info, 0, sizeof info );
 	info.begin = first;
 	info.length = last - first;
-	info.extra = first - first_snapshot->timestamp();
+	info.extra = first - first_snapshot;
 	info.period = period;
-	info.joypad_count = (joypad_data [1] ? 2 : 1); // to do: only handles one or two joypads
 	info.has_joypad_sync = has_joypad_sync_;
-	
-	first -= info.extra;
-	frame_count_t length = last - first;
-	BLARGG_RETURN_ERR( write_nes_state( out, info ) );
-	
-	// write joypad data, possibly in two chunks if it wraps around
-	for ( int i = 0; i < max_joypads; i++ )
+	info.joypad_count = 1;
+	if ( has_second_joypad )
 	{
-		byte const* data = joypad_data [i];
-		if ( data )
+		// Scan second joypad data for any blocks containing non-zero data
+		Nes_Film_Joypad_Scanner joypad( first, last, *this );
+		do
 		{
-			BLARGG_RETURN_ERR( out.write_block( joypad_data_tag, length ) );
-			long index = joypad_index( first );
-			long count = joypad_history_size() - index;
-			if ( count > length )
-				count = length;
+			block_t const& b = data.read( joypad.block );
+			if ( b.joypads [1] &&
+					mem_differs( &b.joypads [1] [joypad.offset], 0, joypad.count ) )
+			{
+				info.joypad_count = 2;
+				break;
+			}
+		}
+		while ( joypad.next() );
+	}
+	RETURN_ERR( write_nes_state( out, info ) );
+	
+	// write joypad data
+	for ( int i = 0; i < info.joypad_count; i++ )
+	{
+		Nes_Film_Joypad_Scanner joypad( first_snapshot, last, *this );
+		RETURN_ERR( out.write_block_header( joypad_data_tag, joypad.remain ) );
+		do
+		{
+			block_t const& b = data.read( joypad.block );
+			byte const* data = b.joypads [i];
+			if ( !data )
+				CHECK_ALLOC( data = joypad.buf() );
+			RETURN_ERR( out.write( &data [joypad.offset], joypad.count ) );
+		}
+		while ( joypad.next() );
+	}
+	
+	// write first state
+	int index = snapshot_index( first_snapshot );
+	assert( snapshots( index ).timestamp() == first_snapshot );
+	RETURN_ERR( write_state( snapshots( index ), out ) );
+	
+	// write snapshots that fall within output periods
+	// TODO: thorougly verify this tricky algorithm
+	//dprintf( "last: %6d\n", last );
+	int last_index = snapshot_index( last );
+	frame_count_t time = first_snapshot + period;
+	for ( ; ++index <= last_index; )
+	{
+		Nes_State_ const& ss = snapshots( index );
+		frame_count_t t = ss.timestamp();
+		if ( t != invalid_frame_count )
+		{
+			while ( time + period <= t )
+				time += period;
 			
-			BLARGG_RETURN_ERR( out.write( data + index, count ) );
-			
-			if ( count < length )
-				BLARGG_RETURN_ERR( out.write( data, length - count ) );
+			if ( t >= time - period )
+			{
+				time += period;
+				//dprintf( "time: %6d\n", t );
+				RETURN_ERR( write_state( ss, out ) );
+			}
 		}
 	}
 	
-	// first snapshot
-	BLARGG_RETURN_ERR( write_snapshot( *first_snapshot, out ) );
-	
-	// write any valid snapshots in chronological order
-	Nes_Snapshot const* last_snapshot = first_snapshot;
-	for ( frame_count_t t = first + period; t < last; t += period )
-	{
-		Nes_Snapshot const* ss = nearest_snapshot( t );
-		if ( ss && ss != last_snapshot )
-		{
-			last_snapshot = ss;
-			BLARGG_RETURN_ERR( write_snapshot( *ss, out ) );
-		}
-	}
-	
-	return blargg_success;
+	return 0;
 }
 
-// read
+// Nes_Film_Reader
 
-blargg_err_t Nes_Film::read( Data_Reader& in )
+blargg_err_t Nes_Film::read( Auto_File_Reader in )
 {
 	Nes_Film_Reader reader;
-	BLARGG_RETURN_ERR( reader.begin( &in, this ) );
+	RETURN_ERR( reader.begin( in, this ) );
 	while ( !reader.done() )
-		BLARGG_RETURN_ERR( reader.next_block() );
-	return blargg_success;
+		RETURN_ERR( reader.next_block() );
+	return 0;
 }
 
 Nes_Film_Reader::Nes_Film_Reader()
 {
-	film = NULL;
-	info_ptr = NULL;
+	film = 0;
+	info_ptr = 0;
 	joypad_count = 0;
+	film_initialized = false;
 	memset( &info_, 0, sizeof info_ );
 }
 
-Nes_Film_Reader::~Nes_Film_Reader()
-{
-}
+Nes_Film_Reader::~Nes_Film_Reader() { }
 
-blargg_err_t Nes_Film_Reader::begin( Data_Reader* dr, Nes_Film* nf )
+blargg_err_t Nes_Film_Reader::begin( Auto_File_Reader dr, Nes_Film* nf )
 {
 	film = nf;
-	film->clear();
-	BLARGG_RETURN_ERR( Nes_File_Reader::begin( dr ) );
+	RETURN_ERR( Nes_File_Reader::begin( dr ) );
 	if ( block_tag() != movie_file_tag )
 		return "Not a movie file";
-	return blargg_success;
+	return 0;
 }
 
-blargg_err_t Nes_Film_Reader::customize( frame_count_t period )
+blargg_err_t Nes_Film::begin_read( movie_info_t const& info )
+{
+	begin_ = info.begin - info.extra;
+	end_   = info.begin + info.length;
+	time_offset = begin_ - begin_ % period_;
+	has_joypad_sync_ = info.has_joypad_sync;
+	assert( begin_ <= end_ );
+	return resize( end_ );
+}
+
+blargg_err_t Nes_Film_Reader::customize()
 {
 	require( info_ptr );
-	if ( film->snapshots.size() > 0 )
-		return blargg_success;
-	
-	return film->begin_read( *this, info_, period );
+	if ( film_initialized )
+		return 0;
+	film_initialized = true;
+	film->clear();
+	return film->begin_read( info_ );
 }
 
 blargg_err_t Nes_Film_Reader::next_block()
 {
-	while ( true )
+	blargg_err_t err = next_block_();
+	if ( err )
+		film->clear(); // don't leave film in inconsistent state when reading fails
+	return err;
+}
+
+blargg_err_t Nes_Film_Reader::next_block_()
+{
+	for ( ; ; )
 	{
-		BLARGG_RETURN_ERR( Nes_File_Reader::next_block() );
+		RETURN_ERR( Nes_File_Reader::next_block() );
 		switch ( depth() == 0 ? block_tag() : 0 )
 		{
-			case info_.tag:
-				check( !info_ptr );
-				BLARGG_RETURN_ERR( read_nes_state( *this, &info_ ) );
-				info_ptr = &info_;
-				return blargg_success;
-			
-			case joypad_data_tag:
-				BLARGG_RETURN_ERR( customize() );
-				BLARGG_RETURN_ERR( film->read_joypad( *this, joypad_count++ ) );
-				break;
-			
-			case snapshot_file_tag: // should work fine as long as first snapshot is present
-				BLARGG_RETURN_ERR( customize() );
-				BLARGG_RETURN_ERR( film->read_snapshot( *this ) );
-				break;
-			
-			default:
-				if ( done() )
-				{
-					// at least first snapshot must have been read
-					check( film->snapshots [0].timestamp() != invalid_frame_count );
-					film->begin_ += info_.extra;
-				}
-				return blargg_success;
+		case movie_info_t::tag:
+			check( !info_ptr );
+			RETURN_ERR( read_nes_state( *this, &info_ ) );
+			info_ptr = &info_;
+			return 0;
+		
+		case joypad_data_tag:
+			RETURN_ERR( customize() );
+			RETURN_ERR( film->read_joypad( *this, joypad_count++ ) );
+			break;
+		
+		case state_file_tag:
+			RETURN_ERR( customize() );
+			RETURN_ERR( film->read_snapshot( *this ) );
+			break;
+		
+		default:
+			if ( done() )
+			{
+				// at least first snapshot must have been read
+				check( film->read_snapshot( film->begin_ ).timestamp() != invalid_frame_count );
+				film->begin_ += info_.extra; // bump back to claimed beginning
+// todo: remove
+#if !defined (NDEBUG) && 0
+FILE* out = fopen( "raw_block", "wb" );
+int block_count = (film->end() - film->time_offset) / film->data.period() + 1;
+//for ( int i = 0; i < block_count; i++ )
+int i = (block_count > 1);
+	fwrite( &film->data.read( i ), offsetof (Nes_Film_Data::block_t,joypad0 [film->data.period()]), 1, out );
+fclose( out );
+#endif
+			}
+			return 0;
 		}
 	}
 }
 
-blargg_err_t Nes_Film::begin_read( Nes_File_Reader& in, movie_info_t const& info, int new_period )
-{
-	begin_ = info.begin;
-	end_   = begin_ + info.length;
-	has_joypad_sync_ = info.has_joypad_sync;
-	
-	begin_ -= info.extra;
-	offset = begin_ - begin_ % new_period;
-	BLARGG_RETURN_ERR( resize_( end_ - offset, new_period ) );
-	
-	assert( info.length + info.extra <= capacity_() + period_ );
-	assert( begin_ < end_ );
-	
-	return blargg_success;
-}
-
 blargg_err_t Nes_Film::read_joypad( Nes_File_Reader& in, int index )
 {
-	if ( index >= max_joypads )
+	check( index <= 1 );
+	if ( index <= 1 )
 	{
-		check( false ); // ignoring extra joypads
-	}
-	else
-	{
-		BLARGG_RETURN_ERR( resize_joypad_data( index, period() ) );
-		BLARGG_RETURN_ERR( in.read( joypad_data [index] + (begin() - offset), length() ) );
+		Nes_Film_Joypad_Scanner joypad( begin_, end_, *this );
+		do
+		{
+			block_t* b = data.write( joypad.block );
+			CHECK_ALLOC( b );
+			byte* p = b->joypads [index];
+			if ( !p )
+				CHECK_ALLOC( p = joypad.buf() );
+			p += joypad.offset;
+			RETURN_ERR( in.read( p, joypad.count ) );
+			if ( !b->joypads [index] && mem_differs( p, 0, joypad.count ) )
+			{
+				// non-zero joypad2 data
+				CHECK_ALLOC( b = data.alloc_joypad2( joypad.block ) );
+				memcpy( &b->joypads [index] [joypad.offset], p, joypad.count );
+				has_second_joypad = true;
+			}
+		}
+		while ( joypad.next() );
 	}
 	
-	return blargg_success;
+	return 0;
 }
 
 blargg_err_t Nes_Film::read_snapshot( Nes_File_Reader& in )
 {
-	BLARGG_RETURN_ERR( in.enter_group() );
+	RETURN_ERR( in.enter_group() );
 	
 	// read snapshot's timestamp
 	nes_state_t info;
 	memset( &info, 0, sizeof info );
-	while ( true )
+	for ( ; ; )
 	{
-		BLARGG_RETURN_ERR( in.next_block() );
+		RETURN_ERR( in.next_block() );
 		if ( in.block_tag() == info.tag )
 		{
-			BLARGG_RETURN_ERR( read_nes_state( in, &info ) );
+			RETURN_ERR( read_nes_state( in, &info ) );
 			break;
 		}
 		check( false ); // shouldn't encounter any unknown blocks
@@ -481,23 +509,23 @@ blargg_err_t Nes_Film::read_snapshot( Nes_File_Reader& in )
 	}
 	else
 	{
-		// see if new snapshot is earlier than existing snapshot for this period
-		Nes_Snapshot& ss = snapshots [snapshot_index( time )];
-		if ( time < ss.timestamp() )
+		// read snapshot only if it's earlier than any existing snapshot in same segment
+		Nes_State_* ss = modify_snapshot( time );
+		CHECK_ALLOC( ss );
+		
+		// uninitialized snapshot's time is large positive value so always compares greater
+		if ( time < ss->timestamp() )
 		{
 			// read new snapshot
-			ss.clear();
-			ss.set_nes_state( info );
+			ss->clear();
+			ss->set_nes_state( info );
 			do
 			{
-				BLARGG_RETURN_ERR( ss.read_blocks( in ) );
+				RETURN_ERR( ss->read_blocks( in ) );
 			}
 			while ( in.block_type() != in.group_end );
 		}
 	}
-	
-	BLARGG_RETURN_ERR( in.exit_group() );
-	
-	return blargg_success;
+	return in.exit_group();
 }
 

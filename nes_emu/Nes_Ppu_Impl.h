@@ -1,103 +1,136 @@
 
-// NES PPU emulator setup functions
+// NES PPU misc functions and setup
 
-// Nes_Emu 0.5.6. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.7.0
 
 #ifndef NES_PPU_IMPL_H
 #define NES_PPU_IMPL_H
 
-#include "Nes_Ppu_Rendering.h"
-class Nes_Snapshot;
-class Nes_Mapper;
-typedef long nes_time_t;
+#include "nes_data.h"
+class Nes_State_;
 
-class Nes_Ppu_Impl : public Nes_Ppu_Rendering {
+class Nes_Ppu_Impl : public ppu_state_t {
 public:
+	typedef BOOST::uint8_t byte;
+	typedef BOOST::uint32_t uint32_t;
+	
 	Nes_Ppu_Impl();
 	~Nes_Ppu_Impl();
 	
-	// Use CHR data and cache optimized transformation of it. Keeps pointer to data.
-	// Closes any previous CHR data, even if error occurs.
+	void reset( bool full_reset );
+	
+	// Setup
 	blargg_err_t open_chr( const byte*, long size );
-	// errors: out of memory
-	
-	// Free CHR data, if any is loaded
+	void rebuild_chr( unsigned long begin, unsigned long end );
 	void close_chr();
+	void save_state( Nes_State_* out ) const;
+	void load_state( Nes_State_ const& );
 	
-	// Assign CHR addresses addr to addr + size - 1 to CHR RAM/ROM + data
-	void set_chr_bank( int addr, int size, long data );
+	enum { image_width = 256 };
+	enum { image_height = 240 };
+	enum { image_left = 8 };
+	enum { buffer_width = image_width + 16 };
+	enum { buffer_height = image_height };
 	
-	// Change nametable mapping
-	void set_nt_banks( int bank0, int bank1, int bank2, int bank3 );
-	
-	// Do direct memory copy to sprite RAM
-	void dma_sprites( void const* in );
-	
-	// See Nes_Emu.h
-	void set_pixels( void* pixels, long row_bytes );
-	void set_sprite_limit( int n ) { sprite_limit = n; }
-	
-	// Save entire state
-	void save_state( Nes_Snapshot* out ) const;
+	int write_2007( int );
 	
 	// Host palette
-	enum { palette_size = 64 };
-	byte host_palette [0x100];
+	enum { palette_increment = 64 };
+	short* host_palette;
+	int palette_begin;
+	int max_palette_size;
+	int palette_size; // set after frame is rendered
 	
-	int host_palette_size() const;
-	void set_palette_range( int start, int end = 0x100 );
+	// Mapping
+	enum { vaddr_clock_mask = 0x1000 };
+	void set_nt_banks( int bank0, int bank1, int bank2, int bank3 );
+	void set_chr_bank( int addr, int size, long data );
 	
-	Nes_Mapper* mapper;
+	// Nametable and CHR RAM
+	enum { nt_ram_size = 0x1000 };
+	enum { chr_addr_size = 0x2000 };
+	enum { bytes_per_tile = 16 };
+	enum { chr_tile_count = chr_addr_size / bytes_per_tile };
+	enum { mini_offscreen_height = 16 }; // double-height sprite
+	struct impl_t
+	{
+		byte nt_ram [nt_ram_size];
+		byte chr_ram [chr_addr_size];
+		union {
+			BOOST::uint32_t clip_buf [256 * 2];
+			byte mini_offscreen [buffer_width * mini_offscreen_height];
+		};
+	};
+	impl_t* impl;
+	enum { scanline_len = 341 };
 	
 protected:
-	
-	byte* caller_pixels;
-	long caller_row_bytes;
-	enum { vaddr_clock_mask = 0x1000 };
-	
-	// used by Nes_Ppu
-	void reset();
-	int read_2007( nes_time_t );
-	int write_2007( nes_time_t, int );
-	void first_scanline();
-	void capture_palette();
-	void render_scanlines( int start, int count, byte* pixels, long pitch );
+	byte spr_ram [0x100];
+	void begin_frame();
 	void run_hblank( int );
-	byte const* map_chr( int addr ) const { return &chr_rom [map_chr_addr( addr )]; }
-	void load_state( Nes_Snapshot const& );
+	int sprite_height() const { return (w2000 >> 2 & 8) + 8; }
 	
-	// I could not think of a shorter name, ugh
-	int starting_sprites_per_scanline_count() const { return max_sprites - sprite_limit; }
+protected: //friend class Nes_Ppu; private:
+	
+	int addr_inc; // pre-calculated $2007 increment (based on w2001 & 0x04)
+	int read_2007( int addr );
+	
+	enum { last_sprite_max_scanline = 240 };
+	long recalc_sprite_max( int scanline );
+	int first_opaque_sprite_line() const;
+	
+protected: //friend class Nes_Ppu_Rendering; private:
 
+	unsigned long palette_offset;
+	int palette_changed;
+	void capture_palette();
+	
+	bool any_tiles_modified;
+	bool chr_is_writable;
+	void update_tiles( int first_tile );
+	
+	typedef uint32_t cache_t;
+	typedef cache_t cached_tile_t [4];
+	cached_tile_t const& get_bg_tile( int index ) const;
+	cached_tile_t const& get_sprite_tile( byte const* sprite ) const;
+	byte* get_nametable( int addr ) { return nt_banks [addr >> 10 & 3]; };
+	
 private:
 	
-	int host_palette_max;
-	int host_palette_size_;
-	BOOST::uint32_t base_palette_offset;
-	int sprite_limit;
-	byte const* chr_rom;
-	bool chr_is_writable;
+	static int map_palette( int addr );
+	int sprite_tile_index( byte const* sprite ) const;
+	
+	// Mapping
+	enum { chr_page_size = 0x400 };
+	long chr_pages [chr_addr_size / chr_page_size];
+	long map_chr_addr( unsigned a ) const { return chr_pages [a / chr_page_size] + a; }
+	byte* nt_banks [4];
+	
+	// CHR data
+	byte const* chr_data; // points to chr ram when there is no read-only data
+	byte* chr_ram; // always points to impl->chr_ram; makes write_2007() faster
 	long chr_size;
+	byte const* map_chr( int addr ) const { return &chr_data [map_chr_addr( addr )]; }
+	
+	// CHR cache
+	cached_tile_t* tile_cache;
+	cached_tile_t* flipped_tiles;
 	byte* tile_cache_mem;
-	bool any_tiles_modified;
-	enum { modified_chunk_size = 32 };
-	BOOST::uint32_t modified_tiles [chr_tile_count / modified_chunk_size];
-	void update_tiles( int first_tile );
+	union {
+		byte modified_tiles [chr_tile_count / 8];
+		uint32_t align_;
+	};
 	void all_tiles_modified();
 	void update_tile( int index );
-	static int map_palette( int addr );
-	int access_2007( nes_time_t );
-	void draw_background( int count );
 };
-
-inline int Nes_Ppu_Impl::host_palette_size() const { return host_palette_size_; }
 
 inline void Nes_Ppu_Impl::set_nt_banks( int bank0, int bank1, int bank2, int bank3 )
 {
-	nt_banks_ [0] = bank0;
-	nt_banks_ [1] = bank1;
-	nt_banks_ [2] = bank2;
-	nt_banks_ [3] = bank3;
+	byte* nt_ram = impl->nt_ram;
+	nt_banks [0] = &nt_ram [bank0 * 0x400];
+	nt_banks [1] = &nt_ram [bank1 * 0x400];
+	nt_banks [2] = &nt_ram [bank2 * 0x400];
+	nt_banks [3] = &nt_ram [bank3 * 0x400];
 }
 
 inline int Nes_Ppu_Impl::map_palette( int addr )
@@ -107,46 +140,34 @@ inline int Nes_Ppu_Impl::map_palette( int addr )
 	return addr & 0x1f;
 }
 
-#include "Nes_Mapper.h"
+inline int Nes_Ppu_Impl::sprite_tile_index( byte const* sprite ) const
+{
+	int tile = sprite [1] + (w2000 << 5 & 0x100);
+	if ( w2000 & 0x20 )
+		tile = (tile & 1) * 0x100 + (tile & 0xfe);
+	return tile;
+}
 
-inline int Nes_Ppu_Impl::access_2007( nes_time_t time )
+inline int Nes_Ppu_Impl::write_2007( int data )
 {
 	int addr = vram_addr;
-	int old_a12 = ~addr & vaddr_clock_mask;
-	int new_addr = addr + (w2000 & 4 ? 32 : 1);
-	vram_addr = new_addr;
-	if ( new_addr & old_a12 )
-		mapper->a12_clocked( time );
-	return addr & 0x3fff;
-}
-
-inline int Nes_Ppu_Impl::read_2007( nes_time_t time )
-{
-	int addr = access_2007( time );
-	int result = r2007;
-	if ( addr < 0x2000 )
+	byte* chr_ram = this->chr_ram; // pre-read
+	int changed = addr + addr_inc;
+	unsigned const divisor = bytes_per_tile * 8;
+	int mod_index = (unsigned) addr / divisor % (0x4000 / divisor);
+	vram_addr = changed;
+	changed ^= addr;
+	addr &= 0x3fff;
+	
+	// use index into modified_tiles [] since it's calculated sooner than addr is masked
+	if ( (unsigned) mod_index < 0x2000 / divisor )
 	{
-		r2007 = *map_chr( addr );
-	}
-	else
-	{
-		// read buffer always filled with nametable, even for palette reads
-		r2007 = get_nametable( addr ) [addr & 0x3ff];
-		if ( addr >= 0x3f00 )
-			result = palette [map_palette( addr )];
-	}
-	return result;
-}
-
-inline int Nes_Ppu_Impl::write_2007( nes_time_t time, int data )
-{
-	int addr = access_2007( time );
-	if ( addr < 0x2000 )
-	{
-		impl->chr_ram [addr] = data; // if CHR is ROM, CHR RAM won't even be used
-		any_tiles_modified = chr_is_writable;
-		modified_tiles [(unsigned) addr / (bytes_per_tile * modified_chunk_size)] |=
-				1 << (((unsigned) addr / bytes_per_tile) % modified_chunk_size);
+		// Avoid overhead of checking for read-only CHR; if that is the case,
+		// this modification will be ignored.
+		int mod = modified_tiles [mod_index];
+		chr_ram [addr] = data;
+		any_tiles_modified = true;
+		modified_tiles [mod_index] = mod | (1 << ((unsigned) addr / bytes_per_tile % 8));
 	}
 	else if ( addr < 0x3f00 )
 	{
@@ -156,19 +177,21 @@ inline int Nes_Ppu_Impl::write_2007( nes_time_t time, int data )
 	{
 		data &= 0x3f;
 		byte& entry = palette [map_palette( addr )];
-		int old = entry;
+		int changed = entry ^ data;
 		entry = data;
-		return old ^ data;
+		if ( changed )
+			palette_changed = 0x18;
 	}
-	return 0;
+	
+	return changed;
 }
 
-inline void Nes_Ppu_Impl::set_palette_range( int start, int end )
+inline void Nes_Ppu_Impl::begin_frame()
 {
-	assert( start % palette_size == 0 );
-	assert( (unsigned) start < 0x100 );
-	base_palette_offset = start * 0x01010101;
-	host_palette_max = end - start;
+	palette_changed = 0x18;
+	palette_size = 0;
+	palette_offset = palette_begin * 0x01010101;
+	addr_inc = w2000 & 4 ? 32 : 1;
 }
 
 #endif

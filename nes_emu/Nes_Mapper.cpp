@@ -1,12 +1,12 @@
 
-// Nes_Emu 0.5.6. http://www.slack.net/~ant/
+// Nes_Emu 0.7.0. http://www.slack.net/~ant/
 
 #include "Nes_Mapper.h"
 
 #include <string.h>
-#include "Nes_Emu.h"
+#include "Nes_Core.h"
 
-/* Copyright (C) 2004-2005 Shay Green. This module is free software; you
+/* Copyright (C) 2004-2006 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
 General Public License as published by the Free Software Foundation; either
 version 2.1 of the License, or (at your option) any later version. This
@@ -17,12 +17,13 @@ more details. You should have received a copy of the GNU Lesser General
 Public License along with this module; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
-#include BLARGG_SOURCE_BEGIN
+#include "blargg_source.h"
 
 Nes_Mapper::Nes_Mapper()
 {
 	emu_ = NULL;
-	state = "";
+	static char c;
+	state = &c; // TODO: state must not be null?
 	state_size = 0;
 }
 
@@ -30,11 +31,11 @@ Nes_Mapper::~Nes_Mapper()
 {
 }
 
-// Sets mirroring, maps first 8K CHR in, first and last 16K of ROM,
+// Sets mirroring, maps first 8K CHR in, first and last 16K of PRG,
 // intercepts writes to upper half of memory, and clears registered state.
 void Nes_Mapper::default_reset_state()
 {
-	int mirroring = rom_->mirroring();
+	int mirroring = cart_->mirroring();
 	if ( mirroring & 8 )
 		mirror_full();
 	else if ( mirroring & 1 )
@@ -69,7 +70,7 @@ void mapper_state_t::write( const void* p, unsigned long s )
 
 int mapper_state_t::read( void* p, unsigned long s ) const
 {
-	if ( s > size )
+	if ( (long) s > size )
 		s = size;
 	memcpy( p, data, s );
 	return s;
@@ -100,70 +101,23 @@ void Nes_Mapper::irq_changed() { emu_->irq_changed(); }
 	
 nes_time_t Nes_Mapper::next_irq( nes_time_t ) { return no_irq; }
 
-void Nes_Mapper::a12_clocked( nes_time_t ) { }
+void Nes_Mapper::a12_clocked() { }
 
 void Nes_Mapper::run_until( nes_time_t ) { }
 
 void Nes_Mapper::end_frame( nes_time_t ) { }
 
-bool Nes_Mapper::ppu_enabled() const { return emu().get_ppu().bg_enabled(); }
+bool Nes_Mapper::ppu_enabled() const { return emu().ppu.w2001 & 0x08; }
 
 // Sound
 
 int Nes_Mapper::channel_count() const { return 0; }
 
-void Nes_Mapper::set_channel_buf( int index, Blip_Buffer* ) { require( false ); }
+void Nes_Mapper::set_channel_buf( int, Blip_Buffer* ) { require( false ); }
 
 void Nes_Mapper::set_treble( blip_eq_t const& ) { }
 
-// Memory interception
-
-int Nes_Mapper::read_mapper( Nes_Emu* emu, nes_addr_t addr )
-{
-	return emu->mapper->read( emu->clock(), addr );
-}
-
-void Nes_Mapper::write_mapper( Nes_Emu* emu, nes_addr_t addr, int data )
-{
-	emu->mapper->write( emu->clock(), addr, data );
-}
-
-int Nes_Mapper::read( nes_time_t time, nes_addr_t addr )
-{
-	return emu().generic_read( time, addr );
-}
-
-void Nes_Mapper::write( nes_time_t time, nes_addr_t addr, int data )
-{
-	emu().generic_write( time, addr, data );
-}
-
-void Nes_Mapper::intercept_reads( nes_addr_t addr, unsigned size )
-{
-	require( addr >= 0x2000 );
-	require( addr + size <= 0x10000 );
-	nes_addr_t end = addr + size + Nes_Cpu::page_size - 1;
-	end  -= end  % Nes_Cpu::page_size;
-	addr -= addr % Nes_Cpu::page_size;
-	emu().cpu.set_reader( addr, end - addr, read_mapper );
-}
-
-void Nes_Mapper::intercept_writes( nes_addr_t addr, unsigned size )
-{
-	require( addr >= 0x2000 );
-	require( addr + size <= 0x10000 );
-	nes_addr_t end = addr + size + Nes_Cpu::page_size - 1;
-	end  -= end  % Nes_Cpu::page_size;
-	addr -= addr % Nes_Cpu::page_size;
-	emu().cpu.set_writer( addr, end - addr, write_mapper );
-}
-
 // Memory mapping
-
-void Nes_Mapper::enable_sram( bool enabled, bool read_only )
-{
-	emu_->enable_sram( enabled, read_only );
-}
 
 void Nes_Mapper::set_prg_bank( nes_addr_t addr, bank_size_t bs, int bank )
 {
@@ -172,38 +126,38 @@ void Nes_Mapper::set_prg_bank( nes_addr_t addr, bank_size_t bs, int bank )
 	int bank_size = 1 << bs;
 	require( addr % bank_size == 0 ); // must be aligned
 	
-	int bank_count = rom_->prg_size() >> bs;
+	int bank_count = cart_->prg_size() >> bs;
 	if ( bank < 0 )
 		bank += bank_count;
 	
 	if ( bank >= bank_count )
 	{
-		check( !(rom_->prg_size() & (rom_->prg_size() - 1)) ); // ensure PRG size is power of 2
+		check( !(cart_->prg_size() & (cart_->prg_size() - 1)) ); // ensure PRG size is power of 2
 		bank %= bank_count;
 	}
 	
-	emu().cpu.map_code( addr, bank_size, rom_->prg() + (bank << bs) );
+	emu().map_code( addr, bank_size, cart_->prg() + (bank << bs) );
 	
 	if ( unsigned (addr - 0x6000) < 0x2000 )
-		emu().cpu.map_memory( addr, bank_size, Nes_Emu::read_rom, Nes_Emu::write_unmapped );
+		emu().enable_prg_6000();
 }
 
 void Nes_Mapper::set_chr_bank( nes_addr_t addr, bank_size_t bs, int bank )
 {
-	emu().sync_ppu(); 
-	emu().get_ppu().set_chr_bank( addr, 1 << bs, bank << bs );
+	emu().ppu.render_until( emu().clock() ); 
+	emu().ppu.set_chr_bank( addr, 1 << bs, bank << bs );
 }
 
 void Nes_Mapper::mirror_manual( int page0, int page1, int page2, int page3 )
 {
-	emu().sync_ppu(); 
-	emu().get_ppu().set_nt_banks( page0, page1, page2, page3 );
+	emu().ppu.render_bg_until( emu().clock() ); 
+	emu().ppu.set_nt_banks( page0, page1, page2, page3 );
 }
 
 #ifndef NDEBUG
 int Nes_Mapper::handle_bus_conflict( nes_addr_t addr, int data )
 {
-	if ( emu().cpu.get_code( addr ) [0] != data )
+	if ( emu().Nes_Cpu::get_code( addr ) [0] != data )
 		dprintf( "Mapper write had bus conflict\n" );
 	return data;
 }
@@ -244,9 +198,9 @@ void Nes_Mapper::register_mapper( int code, creator_func_t func )
 	m.func = func;
 }
 
-Nes_Mapper* Nes_Mapper::create( Nes_Rom const* rom, Nes_Emu* emu )
+Nes_Mapper* Nes_Mapper::create( Nes_Cart const* cart, Nes_Core* emu )
 {
-	Nes_Mapper::creator_func_t func = get_mapper_creator( rom->mapper_code() );
+	Nes_Mapper::creator_func_t func = get_mapper_creator( cart->mapper_code() );
 	if ( !func )
 		return NULL;
 	
@@ -254,7 +208,7 @@ Nes_Mapper* Nes_Mapper::create( Nes_Rom const* rom, Nes_Emu* emu )
 	Nes_Mapper* mapper = func();
 	if ( mapper )
 	{
-		mapper->rom_ = rom;
+		mapper->cart_ = cart;
 		mapper->emu_ = emu;
 	}
 	return mapper;

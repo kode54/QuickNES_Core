@@ -1,7 +1,7 @@
 
-// Multi-channel effects buffer with panning, echo and reverb effects
+// Multi-channel effects buffer with panning, echo and reverb
 
-// Game_Music_Emu 0.2.4. Copyright (C) 2003-2005 Shay Green. GNU LGPL license.
+// Game_Music_Emu 0.3.0
 
 #ifndef EFFECTS_BUFFER_H
 #define EFFECTS_BUFFER_H
@@ -14,13 +14,12 @@ public:
 	// If center_only is true, only center buffers are created and
 	// less memory is used.
 	Effects_Buffer( bool center_only = false );
-	~Effects_Buffer();
 	
 	// Channel  Effect    Center Pan
 	// ---------------------------------
-	//    0     reverb       pan_1
-	//    1     reverb       pan_2
-	//    2      echo         -
+	//    0,5    reverb       pan_1
+	//    1,6    reverb       pan_2
+	//    2,7    echo         -
 	//    3      echo         -
 	//    4      echo         -
 	
@@ -38,11 +37,12 @@ public:
 	};
 	
 	// Set configuration of buffer
-	void config( const config_t& );
+	virtual void config( const config_t& );
+	void set_depth( double );
 	
-	// See Multi_Buffer.h
-	blargg_err_t sample_rate( long samples_per_sec, int msec = blip_default_length );
-	Multi_Buffer::sample_rate;
+public:
+	~Effects_Buffer();
+	blargg_err_t set_sample_rate( long samples_per_sec, int msec = blip_default_length );
 	void clock_rate( long );
 	void bass_freq( int );
 	void clear();
@@ -50,8 +50,6 @@ public:
 	void end_frame( blip_time_t, bool was_stereo = true );
 	long read_samples( blip_sample_t*, long );
 	long samples_avail() const;
-	
-// End of public interface
 private:
 	typedef long fixed_t;
 	

@@ -1,9 +1,9 @@
 
-// Nes_Snd_Emu 0.1.7. http://www.slack.net/~ant/libs/
+// Nes_Snd_Emu 0.1.7. http://www.slack.net/~ant/
 
 #include "Nes_Namco_Apu.h"
 
-/* Copyright (C) 2003-2005 Shay Green. This module is free software; you
+/* Copyright (C) 2003-2006 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
 General Public License as published by the Free Software Foundation; either
 version 2.1 of the License, or (at your option) any later version. This
@@ -14,7 +14,7 @@ more details. You should have received a copy of the GNU Lesser General
 Public License along with this module; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
-#include BLARGG_SOURCE_BEGIN
+#include "blargg_source.h"
 
 Nes_Namco_Apu::Nes_Namco_Apu()
 {
@@ -29,6 +29,7 @@ Nes_Namco_Apu::~Nes_Namco_Apu()
 
 void Nes_Namco_Apu::reset()
 {
+	last_time = 0;
 	addr_reg = 0;
 	
 	int i;
@@ -48,14 +49,6 @@ void Nes_Namco_Apu::output( Blip_Buffer* buf )
 {
 	for ( int i = 0; i < osc_count; i++ )
 		osc_output( i, buf );
-}
-
-BOOST::uint8_t& Nes_Namco_Apu::access()
-{
-	int addr = addr_reg & 0x7f;
-	if ( addr_reg & 0x80 )
-		addr_reg = (addr + 1) | 0x80;
-	return reg [addr];
 }
 
 /*
@@ -81,15 +74,13 @@ void Nes_Namco_Apu::end_frame( nes_time_t time )
 	if ( time > last_time )
 		run_until( time );
 	
+	assert( last_time >= time );
 	last_time -= time;
-	assert( last_time >= 0 );
 }
-
-#include BLARGG_ENABLE_OPTIMIZER
 
 void Nes_Namco_Apu::run_until( nes_time_t nes_end_time )
 {
-	int active_oscs = ((reg [0x7f] >> 4) & 7) + 1;
+	int active_oscs = (reg [0x7F] >> 4 & 7) + 1;
 	for ( int i = osc_count - active_oscs; i < osc_count; i++ )
 	{
 		Namco_Osc& osc = oscs [i];
@@ -104,7 +95,7 @@ void Nes_Namco_Apu::run_until( nes_time_t nes_end_time )
 		if ( time < end_time )
 		{
 			const BOOST::uint8_t* osc_reg = &reg [i * 8 + 0x40];
-			if ( !(osc_reg [4] & 0xe0) )
+			if ( !(osc_reg [4] & 0xE0) )
 				continue;
 			
 			int volume = osc_reg [7] & 15;
@@ -112,12 +103,12 @@ void Nes_Namco_Apu::run_until( nes_time_t nes_end_time )
 				continue;
 			
 			long freq = (osc_reg [4] & 3) * 0x10000 + osc_reg [2] * 0x100L + osc_reg [0];
-			if ( !freq )
-				continue;
+			if ( freq < 64 * active_oscs )
+				continue; // prevent low frequencies from excessively delaying freq changes
 			blip_resampled_time_t period =
 					output->resampled_duration( 983040 ) / freq * active_oscs;
 			
-			int wave_size = (8 - ((osc_reg [4] >> 2) & 7)) * 4;
+			int wave_size = 32 - (osc_reg [4] >> 2 & 7) * 4;
 			if ( !wave_size )
 				continue;
 			
@@ -128,10 +119,8 @@ void Nes_Namco_Apu::run_until( nes_time_t nes_end_time )
 			{
 				// read wave sample
 				int addr = wave_pos + osc_reg [6];
-				int sample = reg [addr >> 1];
+				int sample = reg [addr >> 1] >> (addr << 2 & 4);
 				wave_pos++;
-				if ( addr & 1 )
-					sample >>= 4;
 				sample = (sample & 15) * volume;
 				
 				// output impulse if amplitude changed

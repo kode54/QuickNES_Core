@@ -1,20 +1,13 @@
 
 // Abstract file access interfaces
 
-// Copyright (C) 2005 Shay Green. MIT license.
-
 #ifndef ABSTRACT_FILE_H
 #define ABSTRACT_FILE_H
 
 #include <stdio.h>
 
-// to do: built-in buffering?
-
 // Supports reading and finding out how many bytes are remaining
 class Data_Reader {
-	// noncopyable
-	Data_Reader( const Data_Reader& );
-	Data_Reader& operator = ( const Data_Reader& );
 public:
 	Data_Reader() { }
 	virtual ~Data_Reader() { }
@@ -36,6 +29,11 @@ public:
 	virtual error_t skip( long n );
 	
 	// to do: bytes remaining = LONG_MAX when unknown?
+	
+private:
+	// noncopyable
+	Data_Reader( const Data_Reader& );
+	Data_Reader& operator = ( const Data_Reader& );
 };
 
 // Adds seeking operations
@@ -82,10 +80,6 @@ public:
 
 // File reader based on C FILE
 class Std_File_Reader : public File_Reader {
-	FILE* file_;
-protected:
-	void reset( FILE* f ) { file_ = f; }
-	//FILE* owned_file;
 public:
 	Std_File_Reader();
 	~Std_File_Reader();
@@ -104,13 +98,16 @@ public:
 	error_t seek( long );
 	
 	void close();
+
+protected:
+	void reset( FILE* f ) { file_ = f; }
+	//FILE* owned_file;
+private:
+	FILE* file_;
 };
 
 // Supports writing
 class Data_Writer {
-	// noncopyable
-	Data_Writer( const Data_Writer& );
-	Data_Writer& operator = ( const Data_Writer& );
 public:
 	Data_Writer() { }
 	virtual ~Data_Writer() { }
@@ -119,12 +116,15 @@ public:
 	
 	// Write 'n' bytes. NULL on success, otherwise error string.
 	virtual error_t write( const void*, long n ) = 0;
+	
+	void satisfy_lame_linker_();
+private:
+	// noncopyable
+	Data_Writer( const Data_Writer& );
+	Data_Writer& operator = ( const Data_Writer& );
 };
 
 class Std_File_Writer : public Data_Writer {
-	FILE* file_;
-protected:
-	void reset( FILE* f ) { file_ = f; }
 public:
 	Std_File_Writer();
 	~Std_File_Writer();
@@ -139,6 +139,13 @@ public:
 	error_t write( const void*, long );
 	
 	void close();
+	
+protected:
+	void reset( FILE* f ) { file_ = f; }
+private:
+	FILE* file_;
+	error_t open( const char* path, int ignored ) { return open( path ); }
+	friend class Auto_File_Writer;
 };
 
 // Write data to memory
@@ -170,6 +177,103 @@ public:
 class Null_Writer : public Data_Writer {
 public:
 	error_t write( const void*, long );
+};
+
+// Auto_File to use in place of Data_Reader&/Data_Writer&, allowing a normal
+// file path to be used in addition to a Data_Reader/Data_Writer.
+
+class Auto_File_Reader {
+public:
+	Auto_File_Reader()                      : data(  0 ), path( 0 ) { }
+	Auto_File_Reader( Data_Reader& r )      : data( &r ), path( 0 ) { }
+#ifndef DISABLE_AUTO_FILE
+	Auto_File_Reader( const char* path_ )   : data(  0 ), path( path_ ) { }
+#endif
+	Auto_File_Reader( Auto_File_Reader const& );
+	Auto_File_Reader& operator = ( Auto_File_Reader const& );
+	~Auto_File_Reader();
+	const char* open();
+	
+	int operator ! () const { return !data; }
+	Data_Reader* operator -> () const { return  data; }
+	Data_Reader& operator *  () const { return *data; }
+private:
+	/* mutable */ Data_Reader* data;
+	const char* path;
+};
+
+class Auto_File_Writer {
+public:
+	Auto_File_Writer()                      : data(  0 ), path( 0 ) { }
+	Auto_File_Writer( Data_Writer& r )      : data( &r ), path( 0 ) { }
+#ifndef DISABLE_AUTO_FILE
+	Auto_File_Writer( const char* path_ )   : data(  0 ), path( path_ ) { }
+#endif
+	Auto_File_Writer( Auto_File_Writer const& );
+	Auto_File_Writer& operator = ( Auto_File_Writer const& );
+	~Auto_File_Writer();
+	const char* open();
+	const char* open_comp( int level = -1 ); // compress output if possible
+	
+	int operator ! () const { return !data; }
+	Data_Writer* operator -> () const { return  data; }
+	Data_Writer& operator *  () const { return *data; }
+private:
+	/* mutable */ Data_Writer* data;
+	const char* path;
+};
+
+inline Auto_File_Reader& Auto_File_Reader::operator = ( Auto_File_Reader const& r )
+{
+	data = r.data;
+	path = r.path;
+	((Auto_File_Reader*) &r)->data = 0;
+	return *this;
+}
+inline Auto_File_Reader::Auto_File_Reader( Auto_File_Reader const& r ) { *this = r; }
+
+inline Auto_File_Writer& Auto_File_Writer::operator = ( Auto_File_Writer const& r )
+{
+	data = r.data;
+	path = r.path;
+	((Auto_File_Writer*) &r)->data = 0;
+	return *this;
+}
+inline Auto_File_Writer::Auto_File_Writer( Auto_File_Writer const& r ) { *this = r; }
+
+// Gzip_File
+
+// Get size of gzipped file data (or size of file if not gzipped). NULL
+// on success, otherwise error string.
+const char* get_gzip_eof( const char* path, long* eof_out );
+
+class Gzip_File_Reader : public File_Reader {
+	void* file_;
+	long size_;
+public:
+	Gzip_File_Reader();
+	~Gzip_File_Reader();
+	
+	error_t open( const char* );
+	
+	long size() const;
+	long read_avail( void*, long );
+	
+	long tell() const;
+	error_t seek( long );
+	
+	void close();
+};
+
+class Gzip_File_Writer : public Data_Writer {
+	void* file_;
+public:
+	Gzip_File_Writer();
+	~Gzip_File_Writer();
+	
+	error_t open( const char*, int compression = -1 );
+	error_t write( const void*, long );
+	void close();
 };
 
 #endif

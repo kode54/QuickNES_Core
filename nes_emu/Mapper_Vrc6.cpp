@@ -1,15 +1,15 @@
 
 // Konami VRC6 mapper
 
-// Nes_Emu 0.5.6. http://www.slack.net/~ant/
+// Nes_Emu 0.7.0. http://www.slack.net/~ant/
 
 #include "Nes_Mapper.h"
 
 #include <string.h>
-#include "Nes_Vrc6.h"
+#include "Nes_Vrc6_Apu.h"
 #include "blargg_endian.h"
 
-/* Copyright (C) 2004-2005 Shay Green. This module is free software; you
+/* Copyright (C) 2004-2006 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
 General Public License as published by the Free Software Foundation; either
 version 2.1 of the License, or (at your option) any later version. This
@@ -20,12 +20,14 @@ more details. You should have received a copy of the GNU Lesser General
 Public License along with this module; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
-#include BLARGG_SOURCE_BEGIN
+#include "blargg_source.h"
 
 struct vrc6_state_t
 {
 	// written registers
 	byte prg_16k_bank;
+	// could move sound regs int and out of vrc6_apu_state_t for state saving,
+	// allowing them to be stored here
 	byte old_sound_regs [3] [3]; // to do: eliminate this duplicate
 	byte mirroring;
 	byte prg_8k_bank;
@@ -38,22 +40,22 @@ struct vrc6_state_t
 	byte irq_pending;
 	byte unused;
 	
-	vrc6_snapshot_t sound_state;
+	vrc6_apu_state_t sound_state;
 	
 	void swap();
 };
-BOOST_STATIC_ASSERT( sizeof (vrc6_state_t) == 26 + sizeof (vrc6_snapshot_t) );
+BOOST_STATIC_ASSERT( sizeof (vrc6_state_t) == 26 + sizeof (vrc6_apu_state_t) );
 
 void vrc6_state_t::swap()
 {
 	set_le16( &next_time, next_time );
-	for ( int i = 0; i < sizeof sound_state.delays / sizeof sound_state.delays [0]; i++ )
+	for ( unsigned i = 0; i < sizeof sound_state.delays / sizeof sound_state.delays [0]; i++ )
 		set_le16( &sound_state.delays [i], sound_state.delays [i] );
 }
 
 class Mapper_Vrc6 : public Nes_Mapper, vrc6_state_t {
 	int swap_mask;
-	Nes_Vrc6 sound;
+	Nes_Vrc6_Apu sound;
 	enum { timer_period = 113 * 4 + 3 };
 public:
 	Mapper_Vrc6( int sm )
@@ -77,29 +79,13 @@ public:
 	
 	virtual void save_state( mapper_state_t& out )
 	{
-		sound.save_snapshot( &sound_state );
+		sound.save_state( &sound_state );
 		vrc6_state_t::swap();
 		Nes_Mapper::save_state( out );
 		vrc6_state_t::swap(); // to do: kind of hacky to swap in place
 	}
 	
-	virtual void read_state( mapper_state_t const& in )
-	{
-		Nes_Mapper::read_state( in );
-		vrc6_state_t::swap();
-		
-		// to do: eliminate when format is updated
-		// old-style registers
-		static char zero [sizeof old_sound_regs] = { 0 };
-		if ( 0 != memcmp( old_sound_regs, zero, sizeof zero ) )
-		{
-			dprintf( "Using old VRC6 sound register format\n" );
-			memcpy( sound_state.regs, old_sound_regs, sizeof sound_state.regs );
-			memset( old_sound_regs, 0, sizeof old_sound_regs );
-		}
-		
-		sound.load_snapshot( sound_state );
-	}
+	virtual void read_state( mapper_state_t const& in );
 	
 	virtual void apply_mapping()
 	{
@@ -107,7 +93,7 @@ public:
 		set_prg_bank( 0x8000, bank_16k, prg_16k_bank );
 		set_prg_bank( 0xC000, bank_8k, prg_8k_bank );
 		
-		for ( int i = 0; i < sizeof chr_banks; i++ )
+		for ( int i = 0; i < (int) sizeof chr_banks; i++ )
 			set_chr_bank( i * 0x400, bank_1k, chr_banks [i] );
 		
 		write_bank( 0xb003, mirroring );
@@ -137,7 +123,6 @@ public:
 		
 		// to do: next_time might go negative if IRQ is disabled
 		next_time -= end_time;
-		assert( next_time >= 0 );
 		
 		sound.end_frame( end_time );
 	}
@@ -172,6 +157,24 @@ public:
 			write_irq( time, addr, data );
 	}
 };
+
+void Mapper_Vrc6::read_state( mapper_state_t const& in )
+{
+	Nes_Mapper::read_state( in );
+	vrc6_state_t::swap();
+	
+	// to do: eliminate when format is updated
+	// old-style registers
+	static char zero [sizeof old_sound_regs] = { 0 };
+	if ( 0 != memcmp( old_sound_regs, zero, sizeof zero ) )
+	{
+		dprintf( "Using old VRC6 sound register format\n" );
+		memcpy( sound_state.regs, old_sound_regs, sizeof sound_state.regs );
+		memset( old_sound_regs, 0, sizeof old_sound_regs );
+	}
+	
+	sound.load_state( sound_state );
+}
 
 void Mapper_Vrc6::write_irq( nes_time_t time, nes_addr_t addr, int data )
 {

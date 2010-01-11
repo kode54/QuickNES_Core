@@ -1,14 +1,14 @@
 
 // NES MMC5 mapper, currently only tailored for Castlevania 3 (U)
 
-// Nes_Emu 0.5.6. http://www.slack.net/~ant/
+// Nes_Emu 0.7.0. http://www.slack.net/~ant/
 
 #include "Nes_Mapper.h"
 
-#include "Nes_Emu.h"
+#include "Nes_Core.h"
 #include <string.h>
 
-/* Copyright (C) 2004-2005 Shay Green. This module is free software; you
+/* Copyright (C) 2004-2006 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
 General Public License as published by the Free Software Foundation; either
 version 2.1 of the License, or (at your option) any later version. This
@@ -19,7 +19,7 @@ more details. You should have received a copy of the GNU Lesser General
 Public License along with this module; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
-#include BLARGG_SOURCE_BEGIN
+#include "blargg_source.h"
 
 struct mmc5_state_t
 {
@@ -58,20 +58,9 @@ public:
 	
 	enum { regs_addr = 0x5100 };
 	
-	virtual void apply_mapping()
-	{
-		static unsigned char list [] = {
-			0x05, 0x15, 0x16, 0x17,
-			0x20, 0x21, 0x22, 0x23,
-			0x28, 0x29, 0x2a, 0x2b
-		};
-		
-		for ( int i = 0; i < sizeof list; i++ )
-			write( 0, regs_addr + list [i], regs [list [i]] );
-		intercept_writes( 0x5100, 0x200 );
-	}
+	virtual void apply_mapping();
 	
-	virtual nes_time_t next_irq( nes_time_t present )
+	virtual nes_time_t next_irq( nes_time_t )
 	{
 		if ( irq_enabled & 0x80 )
 			return irq_time;
@@ -79,7 +68,7 @@ public:
 		return no_irq;
 	}
 	
-	virtual void write( nes_time_t time, nes_addr_t addr, int data )
+	virtual bool write_intercepted( nes_time_t time, nes_addr_t addr, int data )
 	{
 		int reg = addr - regs_addr;
 		if ( (unsigned) reg < reg_count )
@@ -136,10 +125,27 @@ public:
 		}
 		else
 		{
-			Nes_Mapper::write( time, addr, data );
+			return false;
 		}
+		
+		return true;
 	}
+	
+	virtual void write( nes_time_t, nes_addr_t, int ) { }
 };
+
+void Mapper_Mmc5::apply_mapping()
+{
+	static unsigned char list [] = {
+		0x05, 0x15, 0x16, 0x17,
+		0x20, 0x21, 0x22, 0x23,
+		0x28, 0x29, 0x2a, 0x2b
+	};
+	
+	for ( int i = 0; i < (int) sizeof list; i++ )
+		write_intercepted( 0, regs_addr + list [i], regs [list [i]] );
+	intercept_writes( 0x5100, 0x200 );
+}
 
 void register_mmc5_mapper();
 void register_mmc5_mapper()

@@ -1,97 +1,129 @@
 
 // NES PPU emulator
 
-// Nes_Emu 0.5.6. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.7.0
 
 #ifndef NES_PPU_H
 #define NES_PPU_H
 
-#include "Nes_Ppu_Impl.h"
-class Nes_Snapshot;
+#include "Nes_Ppu_Rendering.h"
+class Nes_Mapper;
+class Nes_Core;
 
 typedef long nes_time_t;
-typedef long ppu_time_t; // ppu_time_t = nes_time_t * 3 (for NTSC NES)
+typedef long ppu_time_t; // ppu_time_t = nes_time_t * ppu_overclock
 
 ppu_time_t const ppu_overclock = 3; // PPU clocks for each CPU clock
-ppu_time_t const scanline_len = 341;
 
-class Nes_Ppu : public Nes_Ppu_Impl {
-	typedef Nes_Ppu_Impl Impl;
+class Nes_Ppu : public Nes_Ppu_Rendering {
+	typedef Nes_Ppu_Rendering base;
 public:
-	Nes_Ppu();
-	~Nes_Ppu();
+	Nes_Ppu( Nes_Core* );
 	
-	// See Nes_Ppu_Impl.h and Nes_Ppu_Rendering.h for more interface
+	// Begin PPU frame and return beginning CPU timestamp
+	nes_time_t begin_frame( ppu_time_t );
 	
-	void reset( bool full_reset = true );
+	nes_time_t nmi_time() { return nmi_time_; }
+	void acknowledge_nmi() { nmi_time_ = LONG_MAX / 2 + 1; }
 	
-	// Restore entire state
-	void load_state( Nes_Snapshot const& );
-	
-	// True if background rendering is enabled (used by mappers)
-	bool bg_enabled() const { return w2001 & 0x08; }
-	
-	// Begin PPU frame and return time of NMI
-	nes_time_t begin_frame();
-	
-	// Emulate register read/write at given time
-	int read( nes_time_t, unsigned addr );
+	int read_2002( nes_time_t );
+	int read( unsigned addr, nes_time_t );
 	void write( nes_time_t, unsigned addr, int );
 	
-	// Number of CPU clocks in current frame
-	int frame_length() const { return frame_length_; }
-	
-	// Synchronization
+	void render_bg_until( nes_time_t );
 	void render_until( nes_time_t );
 	
-	// End frame rendering
-	void end_frame( nes_time_t );
+	// CPU time that frame will have ended by
+	int frame_length() const { return frame_length_; }
+	
+	// End frame rendering and return PPU timestamp for next frame
+	ppu_time_t end_frame( nes_time_t );
+	
+	// Do direct memory copy to sprite RAM
+	void dma_sprites( nes_time_t, void const* in );
+	
+	int burst_phase;
 	
 private:
 	
-	// to do: make part of state
-	byte odd_frame;
-	bool nmi_will_occur;
-	int extra_clocks;
+	Nes_Core& emu;
 	
+	enum { indefinite_time = LONG_MAX / 2 + 1 };
+	
+	void suspend_rendering();
+	int read_( unsigned addr, nes_time_t ); // note swapped arguments!
+	
+	// NES<->PPU time conversion
+	int extra_clocks;
+	ppu_time_t ppu_time( nes_time_t t ) const { return t * ppu_overclock + extra_clocks; }
+	nes_time_t nes_time( ppu_time_t t ) const { return (t - extra_clocks) / ppu_overclock; }
+	
+	// frame
+	nes_time_t nmi_time_;
+	int end_vbl_mask;
 	int frame_length_;
-	nes_time_t next_time;
+	int frame_length_extra;
+	bool frame_ended;
+	void end_vblank();
+	void run_end_frame( nes_time_t );
+	
+	// bg rendering
+	nes_time_t next_bg_time;
 	ppu_time_t scanline_time;
 	ppu_time_t hblank_time;
 	int scanline_count;
 	int frame_phase;
-	int query_phase;
-	int end_vbl_mask;
-	int palette_changed;
-	
-	void query_until( nes_time_t );
-	bool update_sprite_hit( nes_time_t );
-	void render_until_( nes_time_t );
+	void render_bg_until_( nes_time_t );
 	void run_scanlines( int count );
-	int read_status( nes_time_t );
-	void suspend_rendering();
-	ppu_time_t ppu_time( nes_time_t t ) const;
-	void write_( nes_time_t, unsigned addr, int );
+	
+	// sprite rendering
+	ppu_time_t next_sprites_time;
+	int next_sprites_scanline;
+	void render_until_( nes_time_t );
+	
+	// $2002 status register
+	nes_time_t next_status_event;
+	void query_until( nes_time_t );
+	
+	// sprite hit
+	nes_time_t next_sprite_hit_check;
+	void update_sprite_hit( nes_time_t );
+	
+	// sprite max
+	nes_time_t next_sprite_max_run; // doesn't need to run until this time
+	nes_time_t sprite_max_set_time; // if 0, needs to be recalculated
+	int next_sprite_max_scanline;
+	void run_sprite_max_( nes_time_t );
+	void run_sprite_max( nes_time_t );
+	void invalidate_sprite_max_();
+	void invalidate_sprite_max( nes_time_t );
+	
+	friend int nes_cpu_read_likely_ppu( class Nes_Core*, unsigned, nes_time_t );
 };
+
+inline void Nes_Ppu::suspend_rendering()
+{
+	next_bg_time      = indefinite_time;
+	next_sprites_time = indefinite_time;
+	extra_clocks = 0;
+}
+
+inline Nes_Ppu::Nes_Ppu( Nes_Core* e ) : emu( *e )
+{
+	burst_phase = 0;
+	suspend_rendering();
+}
 
 inline void Nes_Ppu::render_until( nes_time_t t )
 {
-	if ( t >= next_time )
+	if ( t > next_sprites_time )
 		render_until_( t );
 }
 
-inline void Nes_Ppu::write( nes_time_t time, unsigned addr, int data )
+inline void Nes_Ppu::render_bg_until( nes_time_t t )
 {
-	if ( addr == 0x2007 ) // most writes are to $2007
-	{
-		render_until( time );
-		if ( write_2007( time, data ) )
-			palette_changed = 0x18;
-	}
-	else
-	{
-		write_( time, addr, data );
-	}
+	if ( t > next_bg_time )
+		render_bg_until_( t );
 }
 
 #endif

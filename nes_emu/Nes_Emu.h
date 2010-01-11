@@ -1,268 +1,266 @@
 
-// Nintendo Entertainment System (NES) emulator
+// NES video game console emulator with snapshot support
 
-// Nes_Emu 0.5.6. Copyright (C) 2004-2005 Shay Green. GNU LGPL license.
+// Nes_Emu 0.7.0
 
 #ifndef NES_EMU_H
 #define NES_EMU_H
 
-#include "Nes_Rom.h"
-#include "Nes_Apu.h"
-#include "Nes_Cpu.h"
-#include "Nes_Ppu.h"
-class Nes_Mapper;
+#include "blargg_common.h"
+#include "Multi_Buffer.h"
+#include "Nes_Cart.h"
+#include "Nes_Core.h"
+class Nes_State;
+
+// Register optional mappers included with Nes_Emu
+void register_optional_mappers();
+
+extern const char unsupported_mapper []; // returned when cartridge uses unsupported mapper
 
 class Nes_Emu {
 public:
 	Nes_Emu();
-	~Nes_Emu();
+	virtual ~Nes_Emu();
 	
-	// Open NES ROM for emulation. Keeps copy of pointer to ROM. Closes previous ROM
-	// even if new ROM can't be opened. After opening, ROM's CHR data shouldn't be
-	// modified since a copy is cached internally.
-	blargg_err_t open_rom( Nes_Rom const* );
-	// errors: out of memory
+// Basic setup
+
+	// Load iNES file into emulator and clear recording
+	blargg_err_t load_ines( Auto_File_Reader );
 	
-	// Graphics are rendered to an 8-bit pixel buffer supplied by the user. The screen
-	// image is image_width x image_height pixels, but rendering leaves garbage outside
-	// the image so the buffer must be slightly larger, buffer_width x buffer_height
-	// pixels. The top-left pixel of the usable image is at image_left, image_top.
-	enum { image_width   = 256 };
-	enum { image_height  = 240 };
+	// Set sample rate for sound generation
+	blargg_err_t set_sample_rate( long );
+	
+	// Size and depth of graphics buffer required for rendering. Note that this
+	// is larger than the actual image, with a temporary area around the edge
+	// that gets filled with junk. Its height is many times larger in Nes_Recorder
+	// to allow caching of multiple images.
 	enum { buffer_width  = Nes_Ppu::buffer_width };
-	enum { buffer_height = Nes_Ppu::buffer_height };
-	enum { image_left    = Nes_Ppu::image_left };
-	enum { image_top     = Nes_Ppu::image_top };
-	enum { bits_per_pixel = 8 }; // number of bits per pixel in graphics buffer
+	int buffer_height() const { return buffer_height_; }
+	enum { bits_per_pixel = 8 };
 	
 	// Set graphics buffer to render pixels to. Pixels points to top-left pixel and
 	// row_bytes is the number of bytes to get to the next line (positive or negative).
 	void set_pixels( void* pixels, long row_bytes );
 	
-	// Emulate one video frame and return number of clock cycles elapsed,
-	// to pass to Blip_Buffer::end_frame(). Joypad1 and joypad2 are the
-	// current joypad inputs.
-	nes_time_t emulate_frame( unsigned long joypad1, unsigned long joypad2 = 0 );
+	// Size of image generated in graphics buffer
+	enum { image_width   = 256 };
+	enum { image_height  = 240 };
 	
-	// Number of frames generated per second
-	enum { frames_per_second = 60 };
+// Basic emulation
+
+	// Emulate one video frame using joypad1 and joypad2 as input. Afterwards, image
+	// and sound are available for output using the accessors below.
+	virtual blargg_err_t emulate_frame( int joypad1, int joypad2 = 0 );
 	
-	// Get color that should be used given palette entry of graphics buffer, where 0
-	// is the first palette entry used by the emulator, as set by the constructor.
-	// Index should be from 0 to palette_size - 1. The returned color is an index into
-	// the 64-color NES color table, which the caller must obtain elsewhere (there
-	// are a large number of NES palettes available, each with slightly different
-	// approximations of the colors as they would appear on a television).
-	enum { color_table_size = 64 }; // size of fixed NES color table, not provided here
-	enum { max_palette_size = 0x100 };
-	int palette_size() const;
-	int palette_entry( int ) const;
+	// Maximum size of palette that can be generated
+	enum { max_palette_size = 256 };
 	
-// Additional optional features (can be ignored without any problem)
+	// Result of current frame
+	struct frame_t
+	{
+		int joypad_read_count;  // number of times joypads were strobed (read)
+		int burst_phase;        // NTSC burst phase for frame (0, 1, or 2)
+		
+		int sample_count;       // number of samples (always a multiple of chan_count)
+		int chan_count;         // 1: mono, 2: stereo
+		
+		int top;                // top-left position of image in graphics buffer
+		enum { left = 8 };
+		unsigned char* pixels;  // pointer to top-left pixel of image
+		long pitch;             // number of bytes to get to next row of image
+		
+		int palette_begin;      // first host palette entry, as set by set_palette_range()
+		int palette_size;       // number of entries used for current frame
+		short palette [max_palette_size]; // [palette_begin to palette_begin+palette_size-1]
+	};
+	frame_t const& frame() const { return *frame_; }
 	
-	// Initialize so that APU is available for configuration. Optional; automatically
-	// called (if not already) when a ROM is first loaded.
-	blargg_err_t init();
+	// Read samples for the current frame. Returns number of samples read into buffer.
+	// Currently all samples must be read in one call.
+	virtual long read_samples( short* out, long max_samples );
+	
+// Additional features
+	
+	// Use already-loaded cartridge. Retains pointer, so it must be kept around until
+	// closed. A cartridge can be shared among multiple emulators. After opening,
+	// cartridge's CHR data shouldn't be modified since a copy is cached internally.
+	blargg_err_t set_cart( Nes_Cart const* );
+	
+	// Pointer to current cartridge, or NULL if none is loaded
+	Nes_Cart const* cart() const { return emu.cart; }
+	
+	// Free any memory and close cartridge, if one was currently open. A new cartridge
+	// must be opened before further emulation can take place.
+	void close();
 	
 	// Emulate powering NES off and then back on. If full_reset is false, emulates
-	// pressing the reset button only, which doesn't affect memory. If
-	// erase_battery_ram is false, preserves current battery RAM (if ROM uses it).
-	void reset( bool full_reset = true, bool erase_battery_ram = false );
+	// pressing the reset button only, which doesn't affect memory, otherwise
+	// emulates powering system off then on.
+	virtual void reset( bool full_reset = true, bool erase_battery_ram = false );
 	
-	// Save/load snapshot of emulator state
-	void save_snapshot( Nes_Snapshot* ) const;
-	void load_snapshot( Nes_Snapshot const& );
+	// Number of undefined CPU instructions encountered. Cleared after reset() and
+	// load_state(). A non-zero value indicates that cartridge is probably
+	// incompatible.
+	unsigned long error_count() const { return emu.error_count; }
 	
-	// Save/load current battery RAM (used in battery-backed games)
-	blargg_err_t save_battery_ram( Data_Writer& );
-	blargg_err_t load_battery_ram( Data_Reader& );
-	// errors: read/write error
+// Sound
 	
-	// Free any memory and close ROM, if one was currently open. A new ROM must be
-	// loaded before further emulation can take place.
-	void close_rom();
+	// Set sample rate and use a custom sound buffer instead of the default
+	// mono buffer, i.e. Nes_Buffer, Effects_Buffer, etc..
+	blargg_err_t set_sample_rate( long rate, Multi_Buffer* );
 	
-	// Access to sound chips, for use with Blip_Buffer
-	enum { sound_clock_rate = 1789773 }; // clock rate that sound chips run at
-	Nes_Apu& get_apu();
-	Nes_Mapper& get_mapper() { return *mapper; }
+	// Adjust effective frame rate by changing how many samples are generated each frame.
+	// Allows fine tuning of frame rate to improve synchronization.
+	void set_frame_rate( double rate );
 	
-	// Hide/show/enhance sprites
+	// Number of sound channels for current cartridge
+	int channel_count() const { return channel_count_; }
+	
+	// Frequency equalizer parameters
+	struct equalizer_t {
+		double treble; // 5.0 = extra-crisp, -200.0 = muffled
+		long bass;     // 0 = deep, 20000 = tinny
+	};
+	
+	// Current frequency equalization
+	equalizer_t const& equalizer() const { return equalizer_; }
+	
+	// Change frequency equalization
+	void set_equalizer( equalizer_t const& );
+	
+	// Equalizer presets
+	static equalizer_t const nes_eq;        // NES
+	static equalizer_t const famicom_eq;    // Famicom
+	static equalizer_t const tv_eq;         // TV speaker
+	
+// File save/load
+
+	// Save emulator state
+	void save_state( Nes_State* s ) const { emu.save_state( s ); }
+	blargg_err_t save_state( Auto_File_Writer ) const;
+	
+	// Load state into emulator
+	void load_state( Nes_State const& );
+	blargg_err_t load_state( Auto_File_Reader );
+	
+	// True if current cartridge claims it uses battery-backed memory
+	bool has_battery_ram() const { return cart()->has_battery_ram(); }
+	
+	// Save current battery RAM
+	blargg_err_t save_battery_ram( Auto_File_Writer );
+	
+	// Load battery RAM from file. Best called just after reset() or loading cartridge.
+	blargg_err_t load_battery_ram( Auto_File_Reader );
+	
+// Graphics
+
+	// Number of frames generated per second
+	enum { frame_rate = 60 };
+	
+	// Size of fixed NES color table (including the 8 color emphasis modes)
+	enum { color_table_size = 8 * 64 };
+	
+	// NES color lookup table based on standard NTSC TV decoder. Use nes_ntsc.h to
+	// generate a palette with custom parameters.
+	struct rgb_t { unsigned char red, green, blue; };
+	static rgb_t const nes_colors [color_table_size];
+	
+	// Hide/show/enhance sprites. Sprite mode does not affect emulation accuracy.
 	enum sprite_mode_t {
 		sprites_hidden = 0,
 		sprites_visible = 8,  // limit of 8 sprites per scanline as on NES (default)
 		sprites_enhanced = 64 // unlimited sprites per scanline (no flickering)
 	};
-	void set_sprite_mode( sprite_mode_t );
+	void set_sprite_mode( sprite_mode_t n ) { emu.ppu.sprite_limit = n; }
 	
-	// Number of undefined CPU instructions encountered. Cleared on reset() and
-	// load_snapshot(). A non-zero value indicates that ROM is probably incompatible.
-	int error_count() const;
+	// Set range of host palette entries to use in graphics buffer; default uses
+	// all of them. Begin will be rounded up to next multiple of palette_alignment.
+	// Use frame().palette_begin to find the adjusted beginning entry used.
+	enum { palette_alignment = 64 };
+	void set_palette_range( int begin, int end = 256 );
 	
-	// Number of times joypads were strobed during frame
-	int joypad_read_count() const;
+// Access to emulated memory, for viewer/cheater/debugger
 	
-	// Set range of host palette entries to use for rendering. Defaults to
-	// 'palette_start', a a non-zero value to leave room at the beginning for
-	// entries usually reserved by the host operating system. Must be a multiple
-	// of palette_size.
-	enum { palette_start = 64 };
-	void set_palette_range( int begin, int end = 0x100 );
-	
-	// Each pixel in the graphics buffer can be masked with this to yield the only
-	// important bits of the palette index. Internally bit 0x20 is used to hold
-	// pixel priority information, and palette is duplicated twice to make this
-	// bit have no effect on the color.
-	enum { palette_mask = 0x1f };
-	
-// Access to internals, for viewer, cheater, or debugger
-	
-	// CHR (tiles)
-	byte* chr_mem();
+	// CHR
+	byte const* chr_mem();
 	long chr_size() const;
-	blargg_err_t chr_mem_changed(); // call if you change CHR data
+	void write_chr( void const*, long count, long offset );
 	
-	// Nametable (tile indicies on screen)
-	byte* nametable_mem() { return ppu.impl->nt_ram; }
+	// Nametable
+	byte* nametable_mem()       { return emu.ppu.impl->nt_ram; }
 	long nametable_size() const { return 0x1000; }
 	
 	// Built-in 2K memory
-	byte* low_mem() { return cpu.low_mem; }
-	long  low_mem_size() const { return 0x800; }
+	enum { low_mem_size = 0x800 };
+	byte* low_mem()             { return emu.low_mem; }
 	
 	// Optional 8K memory
-	byte* high_mem() { return impl->sram; }
-	long  high_mem_size() const { return 0x2000; }
+	enum { high_mem_size = 0x2000 };
+	byte* high_mem()            { return emu.impl->sram; }
 	
-	// End of general interface
+	// End of public interface
 public:
-	Nes_Ppu& get_ppu() { return ppu; }
-	void irq_changed() { cpu.end_time( 0 ); } // used by debugger to stop cpu
-protected:
-	// Alter timestamp
-	void set_timestamp( long );
+	blargg_err_t set_sample_rate( long rate, class Nes_Buffer* );
+	blargg_err_t set_sample_rate( long rate, class Nes_Effects_Buffer* );
+	void irq_changed() { emu.irq_changed(); }
+private:
+	friend class Nes_Recorder;
 	
-	// Number of frames emulated since reset. Preserved in snapshots.
-	long timestamp() const;
+	frame_t* frame_;
+	int buffer_height_;
+	bool fade_sound_in;
+	bool fade_sound_out;
+	virtual blargg_err_t init_();
+	
+	virtual void loading_state( Nes_State const& ) { }
+	void load_state( Nes_State_ const& );
+	void save_state( Nes_State_* s ) const { emu.save_state( s ); }
+	int joypad_read_count() const { return emu.joypad_read_count; }
+	long timestamp() const { return emu.nes.frame_count; }
+	void set_timestamp( long t ) { emu.nes.frame_count = t; }
 	
 private:
-	friend class Nes_Mapper;
-	
-	// Nes_Mapper use
-	void sync_ppu();
-	void enable_sram( bool enabled, bool read_only = false );
-	//Nes_Cpu& get_cpu() { return cpu; }
-	nes_time_t clock() const { return cpu_time() - 1; } // memory access usually last clock
-	
-	int generic_read( nes_time_t, nes_addr_t );
-	void generic_write( nes_time_t, nes_addr_t, int data );
-	
-private:
-	
 	// noncopyable
 	Nes_Emu( const Nes_Emu& );
 	Nes_Emu& operator = ( const Nes_Emu& );
 	
-	struct impl_t
-	{
-		enum { sram_size = 0x2000 };
-		BOOST::uint8_t sram [sram_size];
-		Nes_Apu apu;
-		BOOST::uint8_t unmapped_page [Nes_Cpu::page_size];
-		
-		// extra byte allows CPU to always read operand of instruction, which
-		// might go past end of ROM
-		char extra_byte;
-	};
-	impl_t* impl; // keep large arrays separate
+	// sound
+	Multi_Buffer* default_sound_buf;
+	Multi_Buffer* sound_buf;
+	unsigned sound_buf_changed_count;
+	Silent_Buffer silent_buffer;
+	equalizer_t equalizer_;
+	int channel_count_;
+	bool sound_enabled;
+	void enable_sound( bool );
+	void clear_sound_buf();
+	void fade_samples( blip_sample_t*, int size, int step );
 	
-	// Timing
-	void start_frame() { cpu.time( 0 ); }
-	nes_time_t cpu_time() const { return cpu.time(); }
+	char* host_pixels;
+	int host_palette_size;
+	frame_t single_frame;
+	Nes_Cart private_cart;
+	Nes_Core emu; // large; keep at end
 	
-	// PPU
-	Nes_Ppu ppu;
-	nes_state_t nes;
-	static int  read_ppu( Nes_Emu*, nes_addr_t );
-	static void write_ppu( Nes_Emu*, nes_addr_t, int data );
-	
-	// ROM and Mapper
-	Nes_Rom const* rom;
-	Nes_Mapper* mapper;
-	static int  read_rom( Nes_Emu*, nes_addr_t );
-	
-	// APU and Joypad
-	joypad_state_t joypad;
-	int joypad_read_count_;
-	unsigned long current_joypad [2];
-	int  read_io( nes_addr_t );
-	void write_io( nes_addr_t, int data );
-	static int  read_io_( Nes_Emu*, nes_addr_t );
-	static void write_io_( Nes_Emu*, nes_addr_t, int data );
-	static int  read_dmc( void* emu, nes_addr_t );
-	static void apu_irq_changed( void* emu );
-	
-	// RAM
-	bool sram_ever_enabled;
-	void init_memory();
-	static int  read_ram( Nes_Emu*, nes_addr_t );
-	static void write_ram( Nes_Emu*, nes_addr_t, int data );
-	static int  read_mirrored_ram( Nes_Emu*, nes_addr_t );
-	static void write_mirrored_ram( Nes_Emu*, nes_addr_t, int data );
-	static int  read_unmapped_sram( Nes_Emu*, nes_addr_t );
-	static void write_unmapped_sram( Nes_Emu*, nes_addr_t, int data );
-	static int  read_sram_( Nes_Emu*, nes_addr_t );
-	static void write_sram_( Nes_Emu*, nes_addr_t, int data );
-	
-	// CPU
-	int error_count_;
-	Nes_Cpu cpu;
-	nes_addr_t read_vector( nes_addr_t );
-	void vector_interrupt( nes_addr_t );
-	static int  read_unmapped( Nes_Emu*, nes_addr_t );
-	static void write_unmapped( Nes_Emu*, nes_addr_t, int data );
+	bool init_called;
+	blargg_err_t auto_init();
 };
 
-inline int Nes_Emu::error_count() const { return error_count_; }
-
-inline int Nes_Emu::joypad_read_count() const { return joypad_read_count_; }
-
-inline void Nes_Emu::set_timestamp( long t ) { nes.frame_count = t; }
-
-inline long Nes_Emu::timestamp() const { return nes.frame_count; }
-
-inline void Nes_Emu::set_sprite_mode( sprite_mode_t n ) { ppu.set_sprite_limit( n ); }
-
-inline void Nes_Emu::set_pixels( void* p, long n ) { ppu.set_pixels( p, n ); }
-
-inline Nes_Apu& Nes_Emu::get_apu() { assert( impl ); return impl->apu; }
-
-inline int Nes_Emu::palette_size() const { return ppu.host_palette_size(); }
-
-inline int Nes_Emu::palette_entry( int i ) const
+inline void Nes_Emu::set_pixels( void* p, long n )
 {
-	assert( (unsigned) i < palette_size() );
-	return ppu.host_palette [i];
+	host_pixels = (char*) p + n;
+	emu.ppu.host_row_bytes = n;
 }
 
-inline byte* Nes_Emu::chr_mem()
+inline byte const* Nes_Emu::chr_mem()
 {
-	return rom->chr_size() ? (byte*) rom->chr() : ppu.impl->chr_ram;
+	return cart()->chr_size() ? (byte*) cart()->chr() : emu.ppu.impl->chr_ram;
 }
 
 inline long Nes_Emu::chr_size() const
 {
-	return rom->chr_size() ? rom->chr_size() : ppu.chr_addr_size;
+	return cart()->chr_size() ? cart()->chr_size() : emu.ppu.chr_addr_size;
 }
-
-inline blargg_err_t Nes_Emu::chr_mem_changed()
-{
-	return ppu.open_chr( rom->chr(), rom->chr_size() );
-}
-
-inline void Nes_Emu::set_palette_range( int i, int j ) { ppu.set_palette_range( i, j ); }
-
-inline void Nes_Emu::sync_ppu() { ppu.render_until( clock() ); }
 
 #endif
 

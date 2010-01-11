@@ -1,11 +1,11 @@
 
-// Game_Music_Emu 0.2.4. http://www.slack.net/~ant/libs/
+// Game_Music_Emu 0.3.0. http://www.slack.net/~ant/
 
 #include "Effects_Buffer.h"
 
 #include <string.h>
 
-/* Copyright (C) 2003-2005 Shay Green. This module is free software; you
+/* Copyright (C) 2003-2006 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
 General Public License as published by the Free Software Foundation; either
 version 2.1 of the License, or (at your option) any later version. This
@@ -16,7 +16,11 @@ more details. You should have received a copy of the GNU Lesser General
 Public License along with this module; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
-#include BLARGG_SOURCE_BEGIN
+#include "blargg_source.h"
+
+#ifdef BLARGG_ENABLE_OPTIMIZER
+	#include BLARGG_ENABLE_OPTIMIZER
+#endif
 
 typedef long fixed_t;
 
@@ -33,14 +37,31 @@ BOOST_STATIC_ASSERT( (reverb_size & reverb_mask) == 0 ); // must be power of 2
 
 Effects_Buffer::config_t::config_t()
 {
-	pan_1 = -0.15;
-	pan_2 = 0.15;
-	reverb_delay = 88;
-	reverb_level = 0.12;
-	echo_delay = 61;
-	echo_level = 0.10;
-	delay_variance = 18;
+	pan_1           = -0.15f;
+	pan_2           =  0.15f;
+	reverb_delay    = 88.0f;
+	reverb_level    = 0.12f;
+	echo_delay      = 61.0f;
+	echo_level      = 0.10f;
+	delay_variance  = 18.0f;
 	effects_enabled = false;
+}
+
+void Effects_Buffer::set_depth( double d )
+{
+	float f = (float) d;
+	config_t c;
+	c.pan_1             = -0.6f * f;
+	c.pan_2             =  0.6f * f;
+	c.reverb_delay      = 880 * 0.1f;
+	c.echo_delay        = 610 * 0.1f;
+	if ( f > 0.5 )
+		f = 0.5; // TODO: more linear reduction of extreme reverb/echo
+	c.reverb_level      = 0.5f * f;
+	c.echo_level        = 0.30f * f;
+	c.delay_variance    = 180 * 0.1f;
+	c.effects_enabled   = (d > 0.0f);
+	config( c );
 }
 
 Effects_Buffer::Effects_Buffer( bool center_only ) : Multi_Buffer( 2 )
@@ -56,7 +77,7 @@ Effects_Buffer::Effects_Buffer( bool center_only ) : Multi_Buffer( 2 )
 	stereo_remain = 0;
 	effect_remain = 0;
 	effects_enabled = false;
-	config( config_t() );
+	set_depth( 0 );
 }
 
 Effects_Buffer::~Effects_Buffer()
@@ -65,26 +86,27 @@ Effects_Buffer::~Effects_Buffer()
 	delete [] reverb_buf;
 }
 
-blargg_err_t Effects_Buffer::sample_rate( long rate, int msec )
+blargg_err_t Effects_Buffer::set_sample_rate( long rate, int msec )
 {
 	if ( !echo_buf )
 	{
 		echo_buf = BLARGG_NEW blip_sample_t [echo_size];
-		BLARGG_CHECK_ALLOC( echo_buf );
+		CHECK_ALLOC( echo_buf );
 	}
 	
 	if ( !reverb_buf )
 	{
 		reverb_buf = BLARGG_NEW blip_sample_t [reverb_size];
-		BLARGG_CHECK_ALLOC( reverb_buf );
+		CHECK_ALLOC( reverb_buf );
 	}
 	
 	for ( int i = 0; i < buf_count; i++ )
-		BLARGG_RETURN_ERR( bufs [i].sample_rate( rate, msec ) );
+		RETURN_ERR( bufs [i].set_sample_rate( rate, msec ) );
 	
 	config( config_ );
+	clear();
 	
-	return Multi_Buffer::sample_rate( bufs [0].sample_rate(), bufs [0].length() );
+	return Multi_Buffer::set_sample_rate( bufs [0].sample_rate(), bufs [0].length() );
 }
 
 void Effects_Buffer::clock_rate( long rate )
@@ -103,8 +125,10 @@ void Effects_Buffer::clear()
 {
 	stereo_remain = 0;
 	effect_remain = 0;
-	memset( echo_buf, 0, echo_size * sizeof (blip_sample_t) );
-	memset( reverb_buf, 0, reverb_size * sizeof (blip_sample_t) );
+	if ( echo_buf )
+		memset( echo_buf, 0, echo_size * sizeof *echo_buf );
+	if ( reverb_buf )
+		memset( reverb_buf, 0, reverb_size * sizeof *reverb_buf );
 	for ( int i = 0; i < buf_count; i++ )
 		bufs [i].clear();
 }
@@ -120,6 +144,8 @@ inline int pin_range( int n, int max, int min = 0 )
 
 void Effects_Buffer::config( const config_t& cfg )
 {
+	channels_changed();
+	
 	// clear echo and reverb buffers
 	if ( !config_.effects_enabled && cfg.effects_enabled && echo_buf )
 	{
@@ -142,15 +168,15 @@ void Effects_Buffer::config( const config_t& cfg )
 		chans.reverb_level = TO_FIXED( config_.reverb_level );
 		chans.echo_level = TO_FIXED( config_.echo_level );
 		
-		const int delay_offset = config_.delay_variance * sample_rate() / (1000 * 2);
+		int delay_offset = int (1.0 / 2000 * config_.delay_variance * sample_rate());
 		
-		const int reverb_sample_delay = config_.reverb_delay * sample_rate() / 1000;
+		int reverb_sample_delay = int (1.0 / 1000 * config_.reverb_delay * sample_rate());
 		chans.reverb_delay_l = pin_range( reverb_size -
 				(reverb_sample_delay - delay_offset) * 2, reverb_size - 2, 0 );
 		chans.reverb_delay_r = pin_range( reverb_size + 1 -
 				(reverb_sample_delay + delay_offset) * 2, reverb_size - 1, 1 );
 		
-		const int echo_sample_delay = config_.echo_delay * sample_rate() / 1000;
+		int echo_sample_delay = int (1.0 / 1000 * config_.echo_delay * sample_rate());
 		chans.echo_delay_l = pin_range( echo_size - 1 - (echo_sample_delay - delay_offset),
 				echo_size - 1 );
 		chans.echo_delay_r = pin_range( echo_size - 1 - (echo_sample_delay + delay_offset),
@@ -217,21 +243,20 @@ long Effects_Buffer::samples_avail() const
 	return bufs [0].samples_avail() * 2;
 }
 
-#include BLARGG_ENABLE_OPTIMIZER
-
 long Effects_Buffer::read_samples( blip_sample_t* out, long total_samples )
 {
 	require( total_samples % 2 == 0 ); // count must be even
 	
 	long remain = bufs [0].samples_avail();
-	if ( remain > (unsigned) total_samples / 2 )
-		remain = (unsigned) total_samples / 2;
+	if ( remain > (total_samples >> 1) )
+		remain = (total_samples >> 1);
 	total_samples = remain;
 	while ( remain )
 	{
 		int active_bufs = buf_count;
 		long count = remain;
 		
+		// optimizing mixing to skip any channels which had nothing added
 		if ( effect_remain )
 		{
 			if ( count > effect_remain )

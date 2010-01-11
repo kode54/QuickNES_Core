@@ -109,6 +109,7 @@
 				AdditionalIncludeDirectories=".."
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="0"
+				FloatingPointModel="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
@@ -160,7 +161,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\apu_snapshot.h"
+				RelativePath="..\nes_emu\apu_state.cpp"
 				>
 			</File>
 			<File
@@ -172,7 +173,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Mapper_Fme07.cpp"
+				RelativePath="..\nes_emu\Mapper_Fme7.cpp"
 				>
 			</File>
 			<File
@@ -188,6 +189,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\nes_emu\misc_mappers.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\nes_emu\Multi_Buffer.cpp"
 				>
 			</File>
@@ -196,11 +201,39 @@
 				>
 			</File>
 			<File
+				RelativePath="..\nes_emu\Nes_Blitter.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Buffer.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Cart.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Core.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\nes_emu\Nes_Cpu.cpp"
 				>
 			</File>
 			<File
+				RelativePath="..\nes_emu\nes_data.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Effects_Buffer.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\nes_emu\Nes_Emu.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Emulator.cpp"
 				>
 			</File>
 			<File
@@ -212,7 +245,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Fme07_Apu.cpp"
+				RelativePath="..\nes_emu\Nes_Film_Data.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Film_Packer.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Fme7_Apu.cpp"
 				>
 			</File>
 			<File
@@ -236,6 +277,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\nes_emu\nes_ntsc.c"
+				>
+			</File>
+			<File
 				RelativePath="..\nes_emu\Nes_Oscs.cpp"
 				>
 			</File>
@@ -256,10 +301,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Rewinder.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\nes_emu\Nes_Rom.cpp"
 				>
 			</File>
@@ -272,7 +313,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Vrc6.cpp"
+				RelativePath="..\nes_emu\nes_util.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Vrc6_Apu.cpp"
 				>
 			</File>
 			<File
@@ -281,10 +326,6 @@
 			</File>
 			<File
 				RelativePath="..\nes_emu\Nonlinear_Effects_Buffer.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\optional_mappers.cpp"
 				>
 			</File>
 		</Filter>
@@ -298,7 +339,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\nes_emu\apu_snapshot.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\apu_state.h"
+				>
+			</File>
+			<File
 				RelativePath="..\nes_emu\blargg_common.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\blargg_config.h"
 				>
 			</File>
 			<File
@@ -330,11 +383,43 @@
 				>
 			</File>
 			<File
+				RelativePath="..\nes_emu\Nes_Blitter.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Buffer.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Cart.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Core.h"
+				>
+			</File>
+			<File
 				RelativePath="..\nes_emu\Nes_Cpu.h"
 				>
 			</File>
 			<File
+				RelativePath="..\nes_emu\nes_cpu_io.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\nes_data.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Effects_Buffer.h"
+				>
+			</File>
+			<File
 				RelativePath="..\nes_emu\Nes_Emu.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Emulator.h"
 				>
 			</File>
 			<File
@@ -346,7 +431,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Fme07_Apu.h"
+				RelativePath="..\nes_emu\Nes_Film_Data.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Film_Packer.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Fme7_Apu.h"
 				>
 			</File>
 			<File
@@ -354,7 +447,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\nes_emu\Nes_Mmc5.h"
+				>
+			</File>
+			<File
 				RelativePath="..\nes_emu\Nes_Namco_Apu.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\nes_ntsc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\nes_ntsc_impl.h"
 				>
 			</File>
 			<File
@@ -366,6 +471,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\nes_emu\Nes_Ppu_Bg.h"
+				>
+			</File>
+			<File
 				RelativePath="..\nes_emu\Nes_Ppu_Impl.h"
 				>
 			</File>
@@ -374,11 +483,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Recorder.h"
+				RelativePath="..\nes_emu\Nes_Ppu_Sprites.h"
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Rewinder.h"
+				RelativePath="..\nes_emu\Nes_Recorder.h"
 				>
 			</File>
 			<File
@@ -394,7 +503,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Vrc6.h"
+				RelativePath="..\nes_emu\nes_util.h"
+				>
+			</File>
+			<File
+				RelativePath="..\nes_emu\Nes_Vrc6_Apu.h"
 				>
 			</File>
 			<File

@@ -1,14 +1,14 @@
 
 // Namco 106 sound chip emulator
 
-// Nes_Snd_Emu 0.1.7. Copyright (C) 2003-2005 Shay Green. GNU LGPL license.
+// Nes_Snd_Emu 0.1.7
 
 #ifndef NES_NAMCO_APU_H
 #define NES_NAMCO_APU_H
 
 #include "Nes_Apu.h"
 
-struct namco_snapshot_t;
+struct namco_state_t;
 
 class Nes_Namco_Apu {
 public:
@@ -34,8 +34,8 @@ public:
 	void write_addr( int );
 	
 	// to do: implement save/restore
-	void save_snapshot( namco_snapshot_t* out );
-	void load_snapshot( namco_snapshot_t const& );
+	void save_state( namco_state_t* out ) const;
+	void load_state( namco_state_t const& );
 	
 private:
 	// noncopyable
@@ -61,6 +61,24 @@ private:
 	BOOST::uint8_t& access();
 	void run_until( nes_time_t );
 };
+/*
+struct namco_state_t
+{
+	BOOST::uint8_t regs [0x80];
+	BOOST::uint8_t addr;
+	BOOST::uint8_t unused;
+	BOOST::uint8_t positions [8];
+	BOOST::uint32_t delays [8];
+};
+*/
+
+inline BOOST::uint8_t& Nes_Namco_Apu::access()
+{
+	int addr = addr_reg & 0x7f;
+	if ( addr_reg & 0x80 )
+		addr_reg = (addr + 1) | 0x80;
+	return reg [addr];
+}
 
 inline void Nes_Namco_Apu::volume( double v ) { synth.volume( 0.10 / osc_count * v ); }
 

@@ -1,11 +1,11 @@
 
-// Nes_Emu 0.5.6. http://www.slack.net/~ant/
+// Nes_Emu 0.7.0. http://www.slack.net/~ant/
 
 #include "Nes_Mapper.h"
 
 #include <string.h>
 
-/* Copyright (C) 2004-2005 Shay Green. This module is free software; you
+/* Copyright (C) 2004-2006 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
 General Public License as published by the Free Software Foundation; either
 version 2.1 of the License, or (at your option) any later version. This
@@ -16,7 +16,7 @@ more details. You should have received a copy of the GNU Lesser General
 Public License along with this module; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 
-#include BLARGG_SOURCE_BEGIN
+#include "blargg_source.h"
 
 class Mapper_Mmc1 : public Nes_Mapper, mmc1_state_t {
 public:
@@ -28,7 +28,10 @@ public:
 	
 	virtual void reset_state()
 	{
-		write( 0, 0, 0x80 );
+		regs [0] = 0x0f;
+		regs [1] = 0x00;
+		regs [2] = 0x01;
+		regs [3] = 0x00;
 	}
 	
 	void register_changed( int );
@@ -46,24 +49,24 @@ public:
 			buf |= (data & 1) << bit; 
 			bit++;
 			
-			if ( bit < 5 )
-				return;
-			
-			int reg = addr >> 13 & 3;
-			regs [reg] = buf & 0x1f;
-			register_changed( reg );
+			if ( bit >= 5 )
+			{
+				int reg = addr >> 13 & 3;
+				regs [reg] = buf & 0x1f;
+				
+				bit = 0;
+				buf = 0;
+				
+				register_changed( reg );
+			}
 		}
 		else
 		{
-			// to do: verify these values
-			regs [0] = 0x0f;
-			regs [1] = 0x0f;
-			regs [2] = 0x0f;
-			regs [3] = 0x00; // first bank is mapped in
+			bit = 0;
+			buf = 0;
+			regs [0] |= 0x0c;
+			register_changed( 0 );
 		}
-		
-		bit = 0;
-		buf = 0;
 	}
 };
 
@@ -82,7 +85,7 @@ void Mapper_Mmc1::register_changed( int reg )
 	}
 	
 	// CHR
-	if ( reg < 3 && rom().chr_size() > 0 )
+	if ( reg < 3 && cart().chr_size() > 0 )
 	{
 		if ( regs [0] & 0x10 )
 		{
