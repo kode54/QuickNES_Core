@@ -68,9 +68,6 @@ protected:
 	// last bank (or before, by subtracting, i.e. last_bank - 1 is next-to-last bank)
 	enum { last_bank = -1 };
 	void set_prg_bank( int cpu_page, bank_size_t, int prg_page );
-
-	byte const* get_prg() const;
-	long get_prg_size() const;
 	
 private:
 	Nes_Emu* emu_;
@@ -87,7 +84,6 @@ private:
 	static Nes_Mapper* make_mmc5();
 	static Nes_Mapper* make_vrc6a();
 	static Nes_Mapper* make_vrc6b();
-	static Nes_Mapper* make_fme07();
 };
 
 Nes_Mapper* make_mapper( int code, Nes_Emu* );
