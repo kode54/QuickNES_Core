@@ -73,10 +73,10 @@ private:
 		if(	msg == WM_INITDIALOG )
 		{
 			p_this = ( input_config * ) lp;
-			SetWindowLong( w, DWL_USER, ( LONG ) p_this );
+			SetWindowLongPtr( w, DWLP_USER, ( LONG_PTR ) p_this );
 		}
 		else
-			p_this = reinterpret_cast< input_config * >( GetWindowLong( w, DWL_USER ) );
+			p_this = reinterpret_cast< input_config * >( GetWindowLongPtr( w, DWLP_USER ) );
 	
 		return p_this ? p_this->DlgProc( w, msg, wp, lp ) : FALSE;
 	}
@@ -202,7 +202,7 @@ public:
 		case WM_SYSCOMMAND:
 			if ( wp == SC_KEYMENU )
 			{
-				SetWindowLong( w, DWL_MSGRESULT, 0 );
+				SetWindowLongPtr( w, DWLP_MSGRESULT, 0 );
 				return TRUE;
 			}
 			break;
@@ -217,13 +217,13 @@ public:
 
 					SetWindowText( GetDlgItem( w, IDC_EDIT_EVENT ), event_text.str().c_str() );
 				}
-				SetWindowLong( w, DWL_MSGRESULT, 0 );
+				SetWindowLongPtr( w, DWLP_MSGRESULT, 0 );
 				return TRUE;
 			}
 			break;
 
 		case DM_GETDEFID:
-			SetWindowLong( w, DWL_MSGRESULT, 0 );
+			SetWindowLongPtr( w, DWLP_MSGRESULT, 0 );
 			return TRUE;
 			break;
 

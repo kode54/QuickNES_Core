@@ -31,10 +31,10 @@ private:
 		if(	msg == WM_INITDIALOG )
 		{
 			p_this = ( sound_config * ) lp;
-			SetWindowLong( w, DWL_USER, ( LONG ) p_this );
+			SetWindowLongPtr( w, DWLP_USER, ( LONG_PTR ) p_this );
 		}
 		else
-			p_this = reinterpret_cast< sound_config * >( GetWindowLong( w, DWL_USER ) );
+			p_this = reinterpret_cast< sound_config * >( GetWindowLongPtr( w, DWLP_USER ) );
 	
 		return p_this ? p_this->DlgProc( w, msg, wp, lp ) : FALSE;
 	}

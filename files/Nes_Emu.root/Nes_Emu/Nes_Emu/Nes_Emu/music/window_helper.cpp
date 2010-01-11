@@ -60,12 +60,12 @@ LRESULT WINAPI container_window::window_proc(HWND wnd,UINT msg,WPARAM wp,LPARAM 
 	{
 		LPVOID * create_params = reinterpret_cast<LPVOID *>(((CREATESTRUCT *)(lp))->lpCreateParams);
 		p_this = reinterpret_cast<container_window *>(create_params[0]); //retrieve pointer to class
-		SetWindowLong(wnd, GWL_USERDATA, (LPARAM)p_this);//store it for future use
+		SetWindowLongPtr(wnd, GWLP_USERDATA, (LONG_PTR)p_this);//store it for future use
 		if (p_this) p_this->wnd_host = wnd;
 		
 	}
 	else
-		p_this = reinterpret_cast<container_window*>(GetWindowLong(wnd,GWL_USERDATA));//if isnt wm_create, retrieve pointer to class
+		p_this = reinterpret_cast<container_window*>(GetWindowLongPtr(wnd,GWLP_USERDATA));//if isnt wm_create, retrieve pointer to class
 	
 	if (p_this && p_this->get_class_data().want_transparent_background)
 	{
