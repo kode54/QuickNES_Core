@@ -192,10 +192,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Apu_State.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\nes_emu\Nes_Cpu.cpp"
 				>
 			</File>
@@ -228,19 +224,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\nes_emu\Nes_Nonlinearizer.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\nes_emu\Nes_Oscs.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\nes_emu\Nes_Ppu.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nes_Ppu_Core.cpp"
 				>
 			</File>
 			<File
@@ -343,10 +331,6 @@
 			</File>
 			<File
 				RelativePath="..\nes_emu\Nes_Mapper.h"
-				>
-			</File>
-			<File
-				RelativePath="..\nes_emu\Nes_Nonlinearizer.h"
 				>
 			</File>
 			<File
