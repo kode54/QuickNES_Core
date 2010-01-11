@@ -1,0 +1,376 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "atlres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""atlres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MAINFRAME MENU 
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Open\tCtrl+O",               ID_FILE_OPEN
+        MENUITEM SEPARATOR
+        MENUITEM "&Load snapshot...\tCtrl+L",   ID_SNAP_LOAD
+        MENUITEM "&Save Snapshot...\tCtrl+S",   ID_SNAP_SAVE
+        MENUITEM SEPARATOR
+        MENUITEM "&Play movie...\tCtrl+M",      ID_MOVIE_LOAD
+        MENUITEM "Save &movie...\tShift+Ctrl+M", ID_MOVIE_SAVE
+        MENUITEM SEPARATOR
+        MENUITEM "E&xit",                       ID_APP_EXIT
+    END
+    POPUP "&Core"
+    BEGIN
+        MENUITEM "&Reset\tCtrl+R",              ID_CORE_RESET
+        MENUITEM SEPARATOR
+        MENUITEM "&Pause\tCtrl+P",              ID_CORE_PAUSE
+        MENUITEM "Next frame\tCtrl+N",          ID_CORE_NEXTFRAME
+        MENUITEM "Re&wind",                     ID_CORE_REWIND
+        MENUITEM SEPARATOR
+        MENUITEM "Record &indefinitely",        ID_CORE_RECORDINDEFINITELY
+        MENUITEM SEPARATOR
+        MENUITEM "Configure &sound",            ID_CONFIGURESOUND
+        MENUITEM "&Configure input",            ID_CONFIGUREINPUT
+    END
+    POPUP "&View"
+    BEGIN
+        MENUITEM "&Status bar",                 ID_VIEW_STATUS_BAR
+    END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "&Controls",                   ID_HELP_CONTROLS
+        MENUITEM "&About",                      ID_APP_ABOUT
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON                    "res\\hourglass.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 250, 150
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "",IDC_STATIC,7,7,178,136
+    ICON            IDR_MAINFRAME,IDC_STATIC,86,22,21,20
+    CTEXT           "",IDC_LINK_BLARGG,13,54,167,10
+    CTEXT           "Proof of concept of NES emulator with real-time\nrewind and replay functionality.",IDC_STATIC,13,70,167,18
+    CTEXT           "",IDC_LINK_ASPIRINGSQUIRE,13,94,167,10
+    CTEXT           "",IDC_LINK_KODE54,13,110,167,10
+    DEFPUSHBUTTON   "OK",IDOK,193,129,50,14
+    CTEXT           "",IDC_BUILD_TIME,13,126,167,10
+END
+
+IDD_CONTROLS DIALOGEX 0, 0, 224, 102
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Controls"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "",IDC_STATIC,7,7,152,88
+    LTEXT           "Pause:\nReset:\nQuit:\n\nLoad movie:\nSave Movie:\n\nQuick load snapshot:\nQuick save snapshot:",IDC_STATIC,13,16,71,74
+    RTEXT           "Ctrl-P\nCtrl-R\nCtrl-Q and Escape\n\nCtrl-M\nShift Ctrl-M\n\nF1-F10\nShift F1-F10",IDC_STATIC,92,16,62,74
+    DEFPUSHBUTTON   "OK",IDOK,167,81,50,14
+END
+
+IDD_INPUT_CONFIG DIALOGEX 0, 0, 315, 313
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Input configuration"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "Assigned controls",IDC_STATIC,7,7,301,128
+    CONTROL         "",IDC_LIST_ASSIGN,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | WS_BORDER,11,17,292,114
+    PUSHBUTTON      "Add",IDC_ADD,11,139,36,14,NOT WS_TABSTOP
+    PUSHBUTTON      "Remove",IDC_REMOVE,51,139,36,14,NOT WS_TABSTOP
+    GROUPBOX        "Actions",IDC_STATIC,7,155,301,100
+    CONTROL         "",IDC_TREE_ACTIONS,"SysTreeView32",TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS | WS_BORDER,11,165,292,86
+    GROUPBOX        "Key or joystick event",IDC_STATIC,7,256,301,32
+    EDITTEXT        IDC_EDIT_EVENT,15,268,284,12,ES_AUTOHSCROLL | ES_READONLY | ES_WANTRETURN
+    PUSHBUTTON      "OK",IDC_OK,198,292,50,14,NOT WS_TABSTOP
+    PUSHBUTTON      "Cancel",IDC_CANCEL,258,292,50,14,NOT WS_TABSTOP
+END
+
+IDD_SOUND_CONFIG DIALOGEX 0, 0, 178, 118
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Sound configuration"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "",IDC_STATIC,7,7,164,29
+    RTEXT           "Sample rate:",IDC_STATIC,14,19,46,10
+    COMBOBOX        IDC_COMBO_SAMPLE_RATE,61,17,103,12,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
+    GROUPBOX        "",IDC_STATIC,7,37,164,55
+    CONTROL         "Effects",IDC_EFFECTS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,37,35,8
+    RTEXT           "Bass:",IDC_STATIC,14,49,46,10
+    CONTROL         "",IDC_SLIDER_BASS,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,61,49,103,10
+    RTEXT           "Treble:",IDC_STATIC,14,61,46,10
+    CONTROL         "",IDC_SLIDER_TREBLE,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,61,61,103,10
+    RTEXT           "Echo depth:",IDC_STATIC,14,73,46,10
+    CONTROL         "",IDC_SLIDER_ECHO_DEPTH,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,61,73,103,10
+    DEFPUSHBUTTON   "OK",IDOK,61,97,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,121,97,50,14
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 243
+        VERTGUIDE, 96
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 143
+    END
+
+    IDD_CONTROLS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 217
+        VERTGUIDE, 85
+        VERTGUIDE, 92
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 95
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDR_MAINFRAME ACCELERATORS 
+BEGIN
+    "Q",            ID_APP_EXIT,            VIRTKEY, CONTROL, NOINVERT
+    VK_ESCAPE,      ID_APP_EXIT,            VIRTKEY, NOINVERT
+    "P",            ID_CORE_PAUSE,          VIRTKEY, CONTROL, NOINVERT
+    "R",            ID_CORE_RESET,          VIRTKEY, CONTROL, NOINVERT
+    "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL, NOINVERT
+    "M",            ID_MOVIE_LOAD,          VIRTKEY, CONTROL, NOINVERT
+    "M",            ID_MOVIE_SAVE,          VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "L",            ID_SNAP_LOAD,           VIRTKEY, CONTROL, NOINVERT
+    VK_F1,          ID_SNAP_LOAD_0,         VIRTKEY, NOINVERT
+    VK_F2,          ID_SNAP_LOAD_1,         VIRTKEY, NOINVERT
+    VK_F3,          ID_SNAP_LOAD_2,         VIRTKEY, NOINVERT
+    VK_F4,          ID_SNAP_LOAD_3,         VIRTKEY, NOINVERT
+    VK_F5,          ID_SNAP_LOAD_4,         VIRTKEY, NOINVERT
+    VK_F6,          ID_SNAP_LOAD_5,         VIRTKEY, NOINVERT
+    VK_F7,          ID_SNAP_LOAD_6,         VIRTKEY, NOINVERT
+    VK_F8,          ID_SNAP_LOAD_7,         VIRTKEY, NOINVERT
+    VK_F9,          ID_SNAP_LOAD_8,         VIRTKEY, NOINVERT
+    VK_F10,         ID_SNAP_LOAD_9,         VIRTKEY, NOINVERT
+    "S",            ID_SNAP_SAVE,           VIRTKEY, CONTROL, NOINVERT
+    VK_F1,          ID_SNAP_SAVE_0,         VIRTKEY, SHIFT, NOINVERT
+    VK_F2,          ID_SNAP_SAVE_1,         VIRTKEY, SHIFT, NOINVERT
+    VK_F3,          ID_SNAP_SAVE_2,         VIRTKEY, SHIFT, NOINVERT
+    VK_F4,          ID_SNAP_SAVE_3,         VIRTKEY, SHIFT, NOINVERT
+    VK_F5,          ID_SNAP_SAVE_4,         VIRTKEY, SHIFT, NOINVERT
+    VK_F6,          ID_SNAP_SAVE_5,         VIRTKEY, SHIFT, NOINVERT
+    VK_F7,          ID_SNAP_SAVE_6,         VIRTKEY, SHIFT, NOINVERT
+    VK_F8,          ID_SNAP_SAVE_7,         VIRTKEY, SHIFT, NOINVERT
+    VK_F9,          ID_SNAP_SAVE_8,         VIRTKEY, SHIFT, NOINVERT
+    VK_F10,         ID_SNAP_SAVE_9,         VIRTKEY, SHIFT, NOINVERT
+    "N",            ID_CORE_NEXTFRAME,      VIRTKEY, CONTROL, NOINVERT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription", "Nes_Emu Module"
+            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "InternalName", "Nes_Emu"
+            VALUE "LegalCopyright", "Copyright 2005"
+            VALUE "OriginalFilename", "Nes_Emu.exe"
+            VALUE "ProductName", "Nes_Emu Module"
+            VALUE "ProductVersion", "1, 0, 0, 1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    IDR_MAINFRAME           "Nes_Emu"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_FILE_OPEN            "Open a NES ROM image\nOpen"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_SNAP_LOAD            "Load a NES state snapshot\nLoad snapshot"
+    ID_SNAP_SAVE            "Save a NES state snapshot\nSave snapshot"
+    ID_MOVIE_LOAD           "Load and play a NES movie\nPlay movie"
+    ID_MOVIE_SAVE           "Save a NES movie\nSave movie"
+    ID_CORE_RESET           "Reset the emulator\nReset"
+    ID_CORE_PAUSE           "Pause or unpause emulation\nPause"
+    ID_CORE_REWIND          "Rewind or resume playback\nRewind"
+    ID_CORE_RECORDINDEFINITELY 
+                            "Record movies indefinitely instead of the last five minutes; Requires a reload.\nRecord indefinitely"
+    ID_CONFIGURESOUND       "Display the sound configuration\nConfigure sound"
+    ID_CONFIGUREINPUT       "Display the input configuration\nConfigure input"
+    ID_HELP_CONTROLS        "Display the standard control keys\nControl help"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_APP_ABOUT            "Display program information, version number and copyright\nAbout"
+    ID_APP_EXIT             "Quit the application\nExit"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_VIEW_STATUS_BAR      "Show or hide the status bar\nToggle StatusBar"
+END
+
+STRINGTABLE 
+BEGIN
+    ATL_IDS_SCRESTORE       "Restore the window to normal size"
+    ATL_IDS_SCTASKLIST      "Activate Task List"
+    ATL_IDS_MDICHILD        "Activate this window"
+END
+
+STRINGTABLE 
+BEGIN
+    ATL_IDS_IDLEMESSAGE     "Ready"
+END
+
+STRINGTABLE 
+BEGIN
+    ATL_IDS_MRU_FILE        "Open this document"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_RECORDING           "Recording"
+    IDS_PAUSED              "Paused"
+    IDS_REWINDING           "Rewinding"
+    IDS_PLAYING             "Playing"
+    IDS_ROM_TITLE           "Select a ROM image..."
+    IDS_ROM_FILTER          "NES ROM Images|*.NES|"
+    IDS_ROM_EXTENSION       "nes"
+    IDS_SNAP_LOAD_TITLE     "Select a snapshot..."
+    IDS_SNAP_SAVE_TITLE     "Save snapshot..."
+    IDS_SNAP_FILTER         "Snapshot files|*.SAV|"
+    IDS_SNAP_EXTENSION      "sav"
+    IDS_FILM_LOAD_TITLE     "Load film..."
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_FILM_SAVE_TITLE     "Save film..."
+    IDS_FILM_FILTER         "Nes_Emu film files|*.FILM|"
+    IDS_FILM_EXTENSION      "film"
+    IDS_ERROR               "Error"
+    IDS_ERROR_CONFIG        "Setting up configuration directories"
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
