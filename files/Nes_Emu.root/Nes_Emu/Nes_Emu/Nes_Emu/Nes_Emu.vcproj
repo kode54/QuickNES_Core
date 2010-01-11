@@ -165,6 +165,7 @@
 				Name="VCLinkerTool"
 				LinkIncremental="1"
 				IgnoreDefaultLibraryNames="atlmincrt"
+				DelayLoadDLLs=""
 				SubSystem="2"
 				TargetMachine="1"
 			/>
@@ -314,6 +315,34 @@
 				</File>
 				<File
 					RelativePath=".\input\input_config.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="music"
+				>
+				<File
+					RelativePath=".\music\trackbar.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\music\trackbar.h"
+					>
+				</File>
+				<File
+					RelativePath=".\music\uxtheme.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\music\uxtheme.h"
+					>
+				</File>
+				<File
+					RelativePath=".\music\window_helper.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\music\window_helper.h"
 					>
 				</File>
 			</Filter>
