@@ -111,7 +111,7 @@ void Nes_Ppu_Rendering::restore_left( int count )
 // Background
 
 template<int clipped>
-inline void Nes_Ppu_Rendering_<clipped>::draw_bg( Nes_Ppu_Rendering& ppu, int scanline,
+void Nes_Ppu_Rendering_<clipped>::draw_bg( Nes_Ppu_Rendering& ppu, int scanline,
 		int skip, int height )
 {
 	ptrdiff_t const row_bytes = ppu.scanline_row_bytes;
@@ -201,15 +201,8 @@ inline void Nes_Ppu_Rendering_<clipped>::draw_bg( Nes_Ppu_Rendering& ppu, int sc
 	}
 }
 
-void draw_bg_unclipped( Nes_Ppu_Rendering& ppu, int scanline, int skip, int height )
-{
-	Nes_Ppu_Rendering_<0>::draw_bg( ppu, scanline, skip, height );
-}
-
-void draw_bg_clipped( Nes_Ppu_Rendering& ppu, int scanline, int skip, int height )
-{
-	Nes_Ppu_Rendering_<1>::draw_bg( ppu, scanline, skip, height );
-}
+template class Nes_Ppu_Rendering_<0>;
+template class Nes_Ppu_Rendering_<1>;
 
 // Sprites
 
