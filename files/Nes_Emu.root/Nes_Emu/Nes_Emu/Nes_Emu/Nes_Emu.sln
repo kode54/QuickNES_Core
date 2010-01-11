@@ -9,7 +9,7 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lib", "..\..\Nes_Emu-0.5.6\win32\lib.vcproj", "{663FB33A-7E53-42B7-A33C-6737E3A0EF02}"
 EndProject
 Global
-	GlobalSection(SourceCodeControl) = preSolution
+	GlobalSection(TeamFoundationVersionControl) = preSolution
 		SccNumberOfProjects = 3
 		SccProjectName0 = \u0022$/emulation/Nes_Emu.root/Nes_Emu\u0022,\u0020DAAAAAAA
 		SccLocalPath0 = ..\\..
