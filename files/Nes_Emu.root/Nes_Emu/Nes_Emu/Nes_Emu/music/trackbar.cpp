@@ -38,6 +38,7 @@ static HWND WINAPI _GetParent_test(HWND wnd)
 		}
 	}
 	_GetParent = & GetParent;
+	return GetParent( wnd );
 }
 
 #ifndef GA_PARENT
