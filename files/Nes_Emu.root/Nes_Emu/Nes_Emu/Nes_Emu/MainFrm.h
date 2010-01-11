@@ -244,11 +244,7 @@ class CMainFrame : public CFrameWindowImpl<CMainFrame>, public CUpdateUI<CMainFr
 
 	int emu_direction, last_direction;
 
-	int emu_speed, emu_frameskip_delta;
-
 	int emu_step;
-
-	bool emu_frameskip;
 
 	// for trackbar
 	bool emu_seeking;
@@ -292,7 +288,6 @@ public:
 		UIEnable( ID_CORE_PAUSE, state );
 		UIEnable( ID_CORE_NEXTFRAME, state );
 		UIEnable( ID_CORE_REWIND, state );
-		UIEnable( ID_CORE_FASTFORWARD, state );
 		::EnableWindow( m_TrackBar.get_wnd(), state );
 		return FALSE;
 	}
@@ -385,19 +380,6 @@ public:
 
 				emu_direction = m_controls->get_direction();
 
-				if ( emu_frameskip != m_controls->get_forward() )
-				{
-					emu_frameskip = m_controls->get_forward();
-					if ( emu_frameskip )
-					{
-						emu_frameskip_delta = 1;
-					}
-					else
-					{
-						emu_frameskip_delta = -1;
-					}
-				}
-
 				input_now = m_controls->read();
 
 				if ( input_now != input_last )
@@ -437,7 +419,7 @@ public:
 					m_film.trim( begin, m_film.end() );
 				}
 
-				int dir = emu_direction * emu_speed;
+				int dir = emu_direction;
 				while ( dir )
 				{
 					if ( dir < 0 && m_emu.tell() <= m_film.begin() )
@@ -471,13 +453,6 @@ public:
 						m_controls->poll();
 						input_now = m_controls->read();
 					}
-				}
-
-				if ( emu_frameskip_delta )
-				{
-					if ( emu_frameskip_delta > 0 && emu_speed < 10 ) emu_speed++;
-					else if ( emu_frameskip_delta < 0 && emu_speed > 1 ) emu_speed--;
-					else emu_frameskip_delta = 0;
 				}
 
 				void * fb;
@@ -547,7 +522,6 @@ public:
 		UPDATE_ELEMENT(ID_CORE_PAUSE, UPDUI_MENUPOPUP)
 		UPDATE_ELEMENT(ID_CORE_NEXTFRAME, UPDUI_MENUPOPUP)
 		UPDATE_ELEMENT(ID_CORE_REWIND, UPDUI_MENUPOPUP)
-		UPDATE_ELEMENT(ID_CORE_FASTFORWARD, UPDUI_MENUPOPUP)
 		UPDATE_ELEMENT(ID_CORE_RECORDINDEFINITELY, UPDUI_MENUPOPUP)
 		UPDATE_ELEMENT(ID_VIEW_STATUS_BAR, UPDUI_MENUPOPUP)
 	END_UPDATE_UI_MAP()
@@ -588,7 +562,6 @@ public:
 		COMMAND_ID_HANDLER(ID_CORE_PAUSE, OnCorePause)
 		COMMAND_ID_HANDLER(ID_CORE_NEXTFRAME, OnCoreNextFrame)
 		COMMAND_ID_HANDLER(ID_CORE_REWIND, OnCoreRewind)
-		COMMAND_ID_HANDLER(ID_CORE_FASTFORWARD, OnCoreFastForward)
 		COMMAND_ID_HANDLER(ID_CORE_RECORDINDEFINITELY, OnCoreRecordIndefinitely)
 		COMMAND_ID_HANDLER(ID_CONFIGUREINPUT, OnConfigureInput)
 		COMMAND_ID_HANDLER(ID_CONFIGURESOUND, OnConfigureSound)
@@ -790,19 +763,14 @@ public:
 
 		CReBarCtrl rebar = m_hWndToolBar;
 		rebar.LockBands( true );
-		int width = GetSystemMetrics( SM_CXFRAME );
-		for ( int i = 0, j = m_CmdBar.GetButtonCount(); i < j; i++ )
-		{
-			RECT r;
-			m_CmdBar.GetItemRect( i, &r );
-			width += r.right - r.left;
-		}
+		RECT rect;
 		REBARBANDINFO bandinfo;
+		m_CmdBar.GetClientRect( &rect );
 		memset( &bandinfo, 0, sizeof( bandinfo ) );
 		bandinfo.cbSize = sizeof( bandinfo );
 		bandinfo.fMask = RBBIM_SIZE;
 		rebar.GetBandInfo( 0, &bandinfo );
-		bandinfo.cx = width;
+		bandinfo.cx = rect.right - rect.left + GetSystemMetrics( SM_CXFRAME ) * 8;
 		rebar.SetBandInfo( 0, &bandinfo );
 		rebar.Detach();
 
@@ -1076,15 +1044,11 @@ public:
 		{
 			emu_direction = 1;
 			last_direction = 0;
-			emu_speed = 1;
-			emu_frameskip = false;
-			emu_frameskip_delta = 0;
 			emu_step = 0;
 			emu_seeking = false;
 			emu_was_paused = false;
 			UISetCheck( ID_CORE_PAUSE, 0 );
 			UISetCheck( ID_CORE_REWIND, 0 );
-			UISetCheck( ID_CORE_FASTFORWARD, 0 );
 
 			if ( m_audio )
 			{
@@ -1832,9 +1796,6 @@ public:
 		{
 			emu_direction = 1;
 			last_direction = 0;
-			emu_speed = 1;
-			emu_frameskip = false;
-			emu_frameskip_delta = 0;
 			emu_step = 0;
 			emu_state = emu_running;
 			emu_seeking = false;
@@ -1844,11 +1805,9 @@ public:
 			//m_TrackBar.ClearTics( TRUE );
 			UISetCheck( ID_CORE_PAUSE, 0 );
 			UISetCheck( ID_CORE_REWIND, 0 );
-			UISetCheck( ID_CORE_FASTFORWARD, 0 );
 
 			input_last = 0;
 			if ( m_controls ) m_controls->reset();
-			if ( m_audio ) m_audio->pause( false );
 		}
 
 		return 0;
@@ -1858,16 +1817,8 @@ public:
 	{
 		if ( emu_state != emu_stopped )
 		{
-			if ( emu_seeking )
-			{
-				emu_was_paused = !emu_was_paused;
-				UISetCheck( ID_CORE_PAUSE, emu_was_paused );
-			}
-			else
-			{
-				emu_state = ( emu_state == emu_running ) ? emu_paused : emu_running;
-				UISetCheck( ID_CORE_PAUSE, emu_state == emu_paused );
-			}
+			emu_state = ( emu_state == emu_running ) ? emu_paused : emu_running;
+			UISetCheck( ID_CORE_PAUSE, emu_state == emu_paused );
 
 			if ( m_audio ) m_audio->pause( emu_state == emu_paused );
 		}
@@ -1893,27 +1844,6 @@ public:
 			emu_direction = -emu_direction;
 			if ( m_controls ) m_controls->set_direction( emu_direction );
 			UISetCheck( ID_CORE_REWIND, emu_direction < 0 );
-		}
-
-		return 0;
-	}
-
-	LRESULT OnCoreFastForward(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
-	{
-		if ( emu_state != emu_stopped )
-		{
-			if ( ! emu_frameskip )
-			{
-				emu_frameskip = true;
-				emu_frameskip_delta = 1;
-			}
-			else
-			{
-				emu_frameskip = false;
-				emu_frameskip_delta = -1;
-			}
-			if ( m_controls ) m_controls->set_forward( emu_frameskip );
-			UISetCheck( ID_CORE_FASTFORWARD, emu_frameskip );
 		}
 
 		return 0;
