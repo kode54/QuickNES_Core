@@ -17,6 +17,19 @@
 
 CAppModule _Module;
 
+#ifndef NDEBUG
+#include <stdarg.h>
+extern "C" void dprintf( const char * fmt, ... )
+{
+	char temp[ 256 ];
+	va_list list;
+	va_start( list, fmt );
+	vsnprintf( temp, sizeof( temp ) / sizeof( *temp ), fmt, list );
+	OutputDebugStringA( temp );
+	va_end( list );
+}
+#endif
+
 class CGameMessageLoop : public CMessageLoop
 {
 public:
