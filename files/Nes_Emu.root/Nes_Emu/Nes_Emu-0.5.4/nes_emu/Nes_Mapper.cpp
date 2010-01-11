@@ -150,7 +150,8 @@ void Nes_Mapper::set_prg_bank( nes_addr_t addr, bank_size_t bs, int bank )
 	
 	emu().cpu.map_code( addr, bank_size, rom->prg() + (bank << bs) );
 
-	if ( addr < 0x8000 ) emu().cpu.map_memory( addr, bank_size, Nes_Emu::read_rom, Nes_Emu::write_unmapped );
+	if ( unsigned (addr - 0x6000) < 0x2000 )
+		emu().cpu.map_memory( addr, bank_size, Nes_Emu::read_rom, Nes_Emu::write_unmapped );
 }
 
 void Nes_Mapper::set_chr_bank( nes_addr_t addr, bank_size_t bs, int bank )
