@@ -53,7 +53,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="c:\programming\nes_emu-0.5.4"
+				AdditionalIncludeDirectories="c:\programming\nes_emu-0.5.6"
 				PreprocessorDefinitions="WIN32;_WINDOWS;STRICT;_DEBUG"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -141,7 +141,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="c:\programming\nes_emu-0.5.4"
+				AdditionalIncludeDirectories="c:\programming\nes_emu-0.5.6"
 				PreprocessorDefinitions="WIN32;_WINDOWS;STRICT;NDEBUG"
 				ExceptionHandling="0"
 				RuntimeLibrary="0"
@@ -350,15 +350,23 @@
 				Name="mappers"
 				>
 				<File
-					RelativePath=".\mappers\Mapper_Fme07.cpp"
+					RelativePath=".\mappers\emu2413.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\mappers\Nes_Fme07.cpp"
+					RelativePath=".\mappers\Fir_Resampler.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\mappers\Nes_Fme07.h"
+					RelativePath=".\mappers\Fir_Resampler.h"
+					>
+				</File>
+				<File
+					RelativePath=".\mappers\Mapper_Vrc7.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\mappers\Nes_Vrc7.cpp"
 					>
 				</File>
 				<File

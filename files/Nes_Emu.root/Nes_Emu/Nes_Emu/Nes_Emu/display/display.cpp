@@ -38,7 +38,6 @@ class display_i_ddraw : public display
 	volatile unsigned    wait_lastscanline;
 	volatile unsigned    wait_screenheight;
 	volatile unsigned    wait_firstline;
-	volatile bool        wait_used;
 	HANDLE               wait_event;
 	UINT                 wait_timerres;
 	UINT                 wait_timerid;
@@ -234,7 +233,6 @@ public:
 		wait_screenheight = GetSystemMetrics( SM_CYSCREEN );
 		wait_firstline = min( rcWindow.bottom, wait_screenheight );
 		wait_lastscanline = 0;
-		wait_used = false;
 	}
 
 	virtual const char* lock_framebuffer( void *& buffer, unsigned & pitch )
@@ -608,7 +606,7 @@ public:
 		DWORD scanline;
 		if ( lpDD->GetScanLine( & scanline ) == DD_OK )
 		{
-			if ( scanline > wait_screenheight ) wait_screenheight = scanline;
+			if ( scanline >= wait_screenheight ) wait_screenheight = scanline + 1;
 
 			scanline = ( scanline + wait_screenheight - wait_firstline ) % wait_screenheight;
 
