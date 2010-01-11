@@ -98,7 +98,7 @@ public:
 	void reset_state()
 	{
 		prg_bank = 0;
-		for ( unsigned i = 0; i < 7; i++ ) chr_banks [i] = i;
+		for ( unsigned i = 0; i < 8; i++ ) chr_banks [i] = i;
 		enable_sram();
 		apply_mapping();
 	}
