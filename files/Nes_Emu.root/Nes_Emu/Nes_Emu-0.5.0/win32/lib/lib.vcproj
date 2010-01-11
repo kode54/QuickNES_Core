@@ -164,10 +164,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\nes_emu\Mapper_Fme07.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\..\nes_emu\Mapper_Mmc5.cpp"
 				>
 			</File>

@@ -236,19 +236,16 @@ private:
 		return p_this->enum_callback( lpDev );
 	}
 
+public:
 	BOOL enum_callback( LPCDIDEVICEINSTANCE lpDev )
 	{
 		LPDIRECTINPUTDEVICE8 lpdJoy;
 
 		if ( lpDI->CreateDevice( lpDev->guidInstance, &lpdJoy, 0 ) != DI_OK )
-		{
-			//OutputDebugString(_T("CreateDevice\n"));
 			return DIENUM_CONTINUE;
-		}
 
 		if ( lpdJoy->SetDataFormat( &c_dfDIJoystick ) != DI_OK )
 		{
-			//OutputDebugString(_T("SetDataFormat\n"));
 			lpdJoy->Release();
 			return DIENUM_CONTINUE;
 		}
@@ -266,12 +263,11 @@ private:
 		//value.diph.dwObj = 0;
 		value.diph.dwHow = DIPH_DEVICE;
 		value.dwData = 128;
-		/*if (*/ lpdJoy->SetProperty( DIPROP_BUFFERSIZE, &value.diph ); /*!= DI_OK )
+		if ( lpdJoy->SetProperty( DIPROP_BUFFERSIZE, &value.diph ) != DI_OK )
 		{
-			OutputDebugString(_T("SetProperty DIPROP_BUFFERSIZE\n"));
 			lpdJoy->Release();
 			return DIENUM_CONTINUE;
-		}*/
+		}
 
 		{
 			DIPROPRANGE diprg; 
@@ -300,7 +296,6 @@ private:
 
 		if ( lpdJoy->Acquire() != DI_OK )
 		{
-			//OutputDebugString(_T("Acquire\n"));
 			lpdJoy->Release();
 			return DIENUM_CONTINUE;
 		}
