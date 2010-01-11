@@ -40,7 +40,7 @@ extern CAppModule _Module;
 #include <nes_emu/nes_util.h>
 #include "std_file_u.h"
 
-#include <nes_emu/Nes_Blitter.h>
+#include "../nes_ntsc/Nes_Blitter.h"
 
 #include <cmath>
 

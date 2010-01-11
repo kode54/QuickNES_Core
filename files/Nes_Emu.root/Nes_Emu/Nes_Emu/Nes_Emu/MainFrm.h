@@ -901,7 +901,7 @@ public:
 
 		rcs.left = 0;
 		rcs.top = 0;
-		rcs.right = m_blitter.out_width();
+		rcs.right = m_blitter.rescale_width();
 		rcs.bottom = m_blitter.out_height() * 2;
 
 		if ( m_hWndClient != NULL )

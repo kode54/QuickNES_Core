@@ -37,7 +37,7 @@ public:
 		m_link_aspiringsquire.SubclassWindow( GetDlgItem( IDC_LINK_ASPIRINGSQUIRE ) );*/
 
 		m_link_aspiringsquire.SetLabel( _T( "Trackbar control by musicmusic" ) );
-		m_link_aspiringsquire.SetHyperLink( _T( "http://music.morbo.org/index.php" ) );
+		m_link_aspiringsquire.SetHyperLink( _T( "http://yuo.be/" ) );
 		m_link_aspiringsquire.SubclassWindow( GetDlgItem( IDC_LINK_ASPIRINGSQUIRE ) );
 
 		m_link_kode54.SetLabel( _T( "Windows front-end by Chris Moeller" ) );
