@@ -22,7 +22,14 @@
 // nothing (not even evaluate its arguments).
 // void dprintf( const char* format, ... );
 #undef dprintf
+#ifdef NDEBUG
 #define dprintf (1) ? ((void) 0) : (void)
+#else
+#ifdef __cplusplus
+extern "C"
+#endif
+void dprintf( const char *, ... );
+#endif
 
 // If enabled, evaluate expr and if false, make debug log entry with source file
 // and line. Meant for finding situations that should be examined further, but that
