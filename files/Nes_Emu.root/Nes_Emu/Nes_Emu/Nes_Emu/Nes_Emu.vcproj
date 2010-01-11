@@ -354,6 +354,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\mappers\Nes_Fme07.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\mappers\Nes_Fme07.h"
+					>
+				</File>
+				<File
 					RelativePath=".\mappers\register.cpp"
 					>
 				</File>
