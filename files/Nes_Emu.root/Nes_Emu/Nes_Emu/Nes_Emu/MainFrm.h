@@ -13,6 +13,8 @@
 
 #include "config/config.h"
 
+#include "music/trackbar.h"
+
 static const int top_clip = 8; // first scanlines not visible on most televisions
 static const int bottom_clip = 4; // last scanlines ^
 
@@ -127,7 +129,7 @@ static CString format_time( unsigned seconds )
 }
 
 class CMainFrame : public CFrameWindowImpl<CMainFrame>, public CUpdateUI<CMainFrame>,
-		public CMessageFilter, public CIdleHandler
+		public CMessageFilter, public CIdleHandler, public musicmusic::track_bar_host
 {
 	class bookmarks_t
 	{
@@ -218,10 +220,7 @@ public:
 
 	CCommandBarXPCtrl m_CmdBar;
 
-	CTrackBarCtrlX m_TrackBar;
-
-	CToolTipCtrl m_ToolTip;
-	CToolInfo    * m_ToolInfo;
+	musicmusic::track_bar_impl m_TrackBar;
 
 	virtual BOOL PreTranslateMessage(MSG* pMsg)
 	{
@@ -237,7 +236,7 @@ public:
 		if ( emu_state == emu_stopped )
 		{
 			//m_TrackBar.ClearTics();
-			m_TrackBar.SetRange( 0, 0 );
+			m_TrackBar.set_range( 0, 0 );
 		}
 		else if ( emu_state == emu_paused )
 		{
@@ -258,7 +257,7 @@ public:
 		UIEnable( ID_CORE_PAUSE, state );
 		UIEnable( ID_CORE_NEXTFRAME, state );
 		UIEnable( ID_CORE_REWIND, state );
-		m_TrackBar.EnableWindow( state );
+		::EnableWindow( m_TrackBar.get_wnd(), state );
 		return FALSE;
 	}
 
@@ -430,9 +429,8 @@ public:
 
 			if ( ! emu_seeking )
 			{
-				m_TrackBar.SetRangeMin( m_emu.movie_begin() );
-				m_TrackBar.SetRangeMax( m_emu.movie_end(), cut );
-				m_TrackBar.SetPos( m_emu.tell() );
+				m_TrackBar.set_range( m_emu.movie_begin(), m_emu.movie_end() );
+				m_TrackBar.set_position( m_emu.tell() );
 			}
 			UISetCheck( ID_CORE_REWIND, emu_direction < 0 );
 
@@ -473,7 +471,6 @@ public:
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		//MESSAGE_HANDLER(WM_SIZING, OnSizing)
 		MESSAGE_HANDLER(WM_MOVE, OnMove)
-		MESSAGE_HANDLER(WM_HSCROLL, OnHScroll)
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
 		MESSAGE_HANDLER(WM_KILLFOCUS, OnKillFocus)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
@@ -535,12 +532,12 @@ public:
 		path = 0;
 		path_snap = 0;
 		path_film = 0;
-
-		m_ToolInfo = 0;
 	}
 
 	~CMainFrame()
 	{
+		m_TrackBar.destroy();
+
 		if ( filename_base.GetLength() )
 		{
 			sram_save();
@@ -589,12 +586,6 @@ public:
 		{
 			delete [] path;
 			path = 0;
-		}
-
-		if ( m_ToolInfo )
-		{
-			delete m_ToolInfo;
-			m_ToolInfo = 0;
 		}
 
 		if ( save_path.GetLength() )
@@ -677,22 +668,17 @@ public:
 
 		//HWND hWndToolBar = CreateSimpleToolBarCtrl(m_hWnd, IDR_MAINFRAME, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 
-		HWND hWndTrackBar = m_TrackBar.Create( m_hWnd, WTL::CRect( 0, 0, 120, 18 ), NULL, WS_CHILD | WS_VISIBLE | TBS_BOTTOM | TBS_HORZ );
+		//HWND hWndTrackBar = m_TrackBar.Create( m_hWnd, WTL::CRect( 0, 0, 120, 18 ), NULL, WS_CHILD | WS_VISIBLE | TBS_BOTTOM | TBS_HORZ );
+		m_TrackBar.create( m_hWnd );
+		::EnableWindow( m_TrackBar.get_wnd(), FALSE );
 
-		m_ToolTip.Create( m_hWnd, CRect( CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT ), 0, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX, WS_EX_TOPMOST );
-		m_ToolTip.SetWindowPos( HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE );
-		m_ToolInfo = new CToolInfo( TTF_TRANSPARENT | TTF_ABSOLUTE | TTF_TRACK, m_hWnd );
-		m_ToolTip.AddTool( m_ToolInfo );
-
-		m_TrackBar.EnableWindow( FALSE );
-
-		m_TrackBar.SetLineSize( 0 );
+		m_TrackBar.set_callback( this );
+		m_TrackBar.set_show_tooltips( true );
+		::SetWindowPos( m_TrackBar.get_wnd(), NULL, 0, 0, 120, 18, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE );
 
 		CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
 		AddSimpleReBarBand(hWndCmdBar);
-		AddSimpleReBarBand(hWndTrackBar);
-
-		m_TrackBar.SetLineSize( 1 );
+		AddSimpleReBarBand(m_TrackBar.get_wnd());
 
 		CReBarCtrl rebar = m_hWndToolBar;
 		rebar.LockBands( true );
@@ -822,49 +808,39 @@ public:
 		return 0;
 	}
 
-	LRESULT OnHScroll(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+	virtual void on_position_change( unsigned pos, bool b_tracking )
 	{
 		if ( emu_state != emu_stopped )
 		{
-			switch ( LOWORD( wParam ) )
+			if ( b_tracking )
 			{
-			case TB_THUMBTRACK:
-				{
-					POINT pt;
-					GetCursorPos( & pt );
-					m_ToolTip.TrackPosition( pt.x + 15, pt.y + 24 );
-					m_ToolTip.UpdateTipText( ( const TCHAR * ) format_time( m_TrackBar.GetPos() / m_emu.frames_per_second ), m_hWnd );
-				}
-
 				if ( ! emu_seeking )
 				{
 					emu_seeking = true;
 					emu_was_paused = emu_state == emu_paused;
-
-					m_ToolTip.TrackActivate( m_ToolInfo, TRUE );
 				}
 
-				m_emu.quick_seek( m_emu.get_film().constrain( m_TrackBar.GetPos() ) );
+				m_emu.quick_seek( m_emu.get_film().constrain( pos ) );
 				emu_state = emu_running;
 				emu_step = 1;
-				break;
-
-			case TB_THUMBPOSITION:
+			}
+			else
+			{
 				if ( emu_seeking )
 				{
 					emu_seeking = false;
 					emu_state = emu_was_paused ? emu_paused : emu_running;
-
-					m_ToolTip.TrackActivate( m_ToolInfo, FALSE );
 				}
 
-				m_emu.quick_seek( m_emu.get_film().constrain( m_TrackBar.GetPos() ) );
+				m_emu.quick_seek( m_emu.get_film().constrain( pos ) );
 				emu_step = 0;
-				break;
 			}
 		}
+	}
 
-		return 0;
+	virtual void get_tooltip_text(unsigned pos, CString & p_out)
+	{
+		p_out = format_time( pos / 60 );
 	}
 
 #if 0
@@ -1366,9 +1342,8 @@ public:
 					{
 						input_last = 0;
 						m_emu.set_film( & film );
-						m_TrackBar.SetRangeMin( m_emu.movie_begin() );
-						m_TrackBar.SetRangeMax( m_emu.movie_end(), TRUE );
-						m_TrackBar.SetPos( m_emu.tell() );
+						m_TrackBar.set_range( m_emu.movie_begin(), m_emu.movie_end() );
+						m_TrackBar.set_position( m_emu.tell() );
 					}
 					else stop_error( err );
 				}
