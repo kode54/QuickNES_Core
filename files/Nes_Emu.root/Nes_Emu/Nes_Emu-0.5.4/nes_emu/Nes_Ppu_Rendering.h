@@ -8,12 +8,18 @@
 
 #include "nes_state.h"
 
+class Nes_Ppu_Rendering;
+
 template<int clipped>
 struct Nes_Ppu_Rendering_
 {
-	static void draw_bg( Nes_Ppu_Rendering&, int scanline, int skip, int height );
+	static inline void draw_bg( Nes_Ppu_Rendering&, int scanline, int skip, int height );
 	static void draw_sprite( Nes_Ppu_Rendering&, byte const* sprite, int begin, int end );
 };
+
+// fucking MSVC
+void draw_bg_unclipped( Nes_Ppu_Rendering&, int scanline, int skip, int height );
+void draw_bg_clipped( Nes_Ppu_Rendering&, int scanline, int skip, int height );
 
 class Nes_Ppu_Rendering : public ppu_state_t {
 protected:

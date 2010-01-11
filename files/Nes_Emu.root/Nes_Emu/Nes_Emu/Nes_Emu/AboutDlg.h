@@ -28,7 +28,7 @@ public:
 	{
 		CenterWindow( GetParent() );
 
-		m_link_blargg.SetLabel( _T( "Emu_Nes v0.5.0 - Copyright 2005 Shay Green" ) );
+		m_link_blargg.SetLabel( _T( "Emu_Nes v0.5.4 - Copyright 2005 Shay Green" ) );
 		m_link_blargg.SetHyperLink( _T( "http://www.slack.net/~ant/" ) );
 		m_link_blargg.SubclassWindow( GetDlgItem( IDC_LINK_BLARGG ) );
 
