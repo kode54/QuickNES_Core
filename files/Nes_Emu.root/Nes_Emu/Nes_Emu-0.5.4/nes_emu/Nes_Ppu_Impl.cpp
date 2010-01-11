@@ -298,9 +298,9 @@ void Nes_Ppu_Impl::draw_background( int last )
 		if ( first == 0 )
 			height = 1; // needs to run hblank after first line, in case x scroll changes
 		if ( y == 0 && height == 8 )
-			draw_bg_unclipped( *this, first, y, height );
+			Nes_Ppu_Rendering_<0>::draw_bg( *this, first, y, height );
 		else
-			draw_bg_clipped( *this, first, y, height );
+			Nes_Ppu_Rendering_<1>::draw_bg( *this, first, y, height );
 		
 		run_hblank( height );
 		first += height;
