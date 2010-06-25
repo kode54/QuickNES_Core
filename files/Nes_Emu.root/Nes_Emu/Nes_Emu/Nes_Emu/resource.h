@@ -6,6 +6,7 @@
 #define IDD_INPUT_CONFIG                104
 #define IDD_SOUND_CONFIG                107
 #define IDD_CONTROLS                    108
+#define IDD_DISPLAY_CONFIG              109
 #define IDR_MAINFRAME                   128
 #define IDC_LINK_BLARGG                 1000
 #define IDC_LIST_ASSIGN                 1000
@@ -16,6 +17,7 @@
 #define IDC_LINK_KODE54                 1002
 #define IDC_REMOVE                      1002
 #define IDC_SLIDER_BASS                 1002
+#define IDC_VSYNC                       1002
 #define IDC_BUILD_TIME                  1003
 #define IDC_TREE_ACTIONS                1003
 #define IDC_SLIDER_TREBLE               1003
@@ -56,6 +58,8 @@
 #define ID_SNAP_SAVE_8                  40030
 #define ID_SNAP_SAVE_9                  40031
 #define ID_CORE_FASTFORWARD             40032
+#define ID_CORE_CONFIGUREDISPLAY        40035
+#define ID_CONFIGUREDISPLAY             40036
 #define IDS_RECORDING                   40100
 #define IDS_PAUSED                      40101
 #define IDS_REWINDING                   40102
@@ -79,8 +83,8 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        201
-#define _APS_NEXT_COMMAND_VALUE         40035
-#define _APS_NEXT_CONTROL_VALUE         1002
+#define _APS_NEXT_COMMAND_VALUE         40037
+#define _APS_NEXT_CONTROL_VALUE         1003
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

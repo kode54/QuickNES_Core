@@ -6,7 +6,7 @@ class sound_out
 public:
 	virtual ~sound_out() {}
 
-	virtual const char* open( unsigned sample_rate, unsigned nch, unsigned max_samples_per_frame, unsigned num_frames ) = 0;
+	virtual const char* open( void * hwnd, unsigned sample_rate, unsigned nch, unsigned max_samples_per_frame, unsigned num_frames ) = 0;
 
 	virtual const char* write_frame( void * buffer, unsigned num_samples, bool wait = true ) = 0;
 
@@ -16,5 +16,6 @@ public:
 };
 
 sound_out * create_sound_out();
+sound_out * create_sound_out_ds();
 
 #endif

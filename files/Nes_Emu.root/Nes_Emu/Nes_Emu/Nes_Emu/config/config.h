@@ -43,4 +43,18 @@ BOOST_STATIC_ASSERT( sizeof ( sound_config_t ) == 6 );
 void sound_config_load( sound_config_t & config, const TCHAR * save_path );
 void sound_config_save( const sound_config_t & config, const TCHAR * save_path );
 
+struct display_config_t
+{
+	typedef unsigned char var;
+
+	var vsync;
+
+	display_config_t();
+};
+
+BOOST_STATIC_ASSERT( sizeof ( display_config_t ) == 1 );
+
+void display_config_load( display_config_t & config, const TCHAR * save_path );
+void display_config_save( const display_config_t & config, const TCHAR * save_path );
+
 #endif

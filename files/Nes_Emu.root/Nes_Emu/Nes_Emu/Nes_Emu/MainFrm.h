@@ -5,6 +5,7 @@
 #pragma once
 
 #include "display/display.h"
+#include "display/display_config.h"
 
 #include "sound/sound_out.h"
 #include "sound/sound_config.h"
@@ -16,6 +17,8 @@
 #include "music/trackbar.h"
 
 #include <zlib.h>
+
+static const int sound_buffer_frames = 6;
 
 /*static const int top_clip = 8; // first scanlines not visible on most televisions
 static const int bottom_clip = 4; // last scanlines ^*/
@@ -214,6 +217,7 @@ class CMainFrame : public CFrameWindowImpl<CMainFrame>, public CUpdateUI<CMainFr
 
 	sound_config_t sound_config;
 
+	display_config_t display_config;
 
 	display * m_video;
 
@@ -351,10 +355,11 @@ public:
 
 			if ( ! m_audio )
 			{
-				sound_buf_size = sound_config.sample_rate / ( m_emu.frame_rate / 2 ) * 2;
+				//sound_buf_size = sound_config.sample_rate / ( m_emu.frame_rate / 2 ) * 2;
+				sound_buf_size = sound_config.sample_rate / m_emu.frame_rate * ( sound_config.effects_enabled ? 2 : 1 );
 
-				m_audio = create_sound_out();
-				err = m_audio->open( sound_config.sample_rate, sound_config.effects_enabled ? 2 : 1, sound_buf_size, 10 );
+				m_audio = create_sound_out_ds();
+				err = m_audio->open( m_hWnd, sound_config.sample_rate, sound_config.effects_enabled ? 2 : 1, sound_buf_size, sound_buffer_frames );
 				if ( ! err )
 				{
 					if ( sound_config.effects_enabled ) err = m_emu.set_sample_rate( sound_config.sample_rate, &m_effects_buffer );
@@ -428,7 +433,7 @@ public:
 				if ( !core_config.record_indefinitely )
 				{
 					long begin = m_film.constrain( m_film.end() - 5 * 60 * m_emu.frame_rate );
-					if ( m_emu.tell() <= begin )
+					if ( emu_direction < 0 && m_emu.tell() <= begin )
 					{
 						m_emu.seek( begin );
 						set_status( IDS_PAUSED );
@@ -514,10 +519,10 @@ public:
 				rect.right = rect.left + m_emu.image_width;
 				rect.bottom = rect.top + m_emu.image_height - top_clip - bottom_clip;*/
 
-				bool wait_for_vsync = true;
+				bool wait_for_vsync = !! display_config.vsync;
 
-				if ( m_audio && m_audio->buffered() < 7 )
-					wait_for_vsync = false;
+				/*if ( m_audio && m_audio->buffered() < ( sound_buffer_frames - 1 ) )
+					wait_for_vsync = false;*/
 
 				m_video->paint( /*rect,*/ wait_for_vsync );
 			}
@@ -593,6 +598,7 @@ public:
 		COMMAND_ID_HANDLER(ID_CORE_RECORDINDEFINITELY, OnCoreRecordIndefinitely)
 		COMMAND_ID_HANDLER(ID_CONFIGUREINPUT, OnConfigureInput)
 		COMMAND_ID_HANDLER(ID_CONFIGURESOUND, OnConfigureSound)
+		COMMAND_ID_HANDLER(ID_CONFIGUREDISPLAY, OnConfigureDisplay)
 		COMMAND_ID_HANDLER(ID_VIEW_STATUS_BAR, OnViewStatusBar)
 		COMMAND_ID_HANDLER(ID_HELP_CONTROLS, OnHelpControls)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
@@ -703,6 +709,7 @@ public:
 		{
 			core_config_save( core_config, save_path );
 			sound_config_save( sound_config, save_path );
+			display_config_save( display_config, save_path );
 		}
 	}
 
@@ -724,6 +731,7 @@ public:
 					{
 						core_config_load( core_config, save_path );
 						sound_config_load( sound_config, save_path );
+						display_config_load( display_config, save_path );
 
 						return true;
 					}
@@ -770,6 +778,7 @@ public:
 	{
 		// create command bar window
 		HWND hWndCmdBar = m_CmdBar.Create( m_hWnd, rcDefault, NULL, ATL_SIMPLE_CMDBAR_PANE_STYLE );
+		m_CmdBar.m_bFlatMenus = false;
 		// attach menu
 		m_CmdBar.AttachMenu( GetMenu() );
 		// load command bar images
@@ -845,7 +854,7 @@ public:
 
 		if ( !err )
 		{
-			m_video = create_display();
+			m_video = create_display_d3d9();
 			//err = m_video->open( m_emu.buffer_width, m_emu.buffer_height(), m_hWndClient );
 			err = m_video->open( m_blitter.out_width(), m_blitter.out_height(), m_hWndClient );
 		}
@@ -975,7 +984,7 @@ public:
 
 	virtual void get_tooltip_text(unsigned pos, CString & p_out)
 	{
-		p_out = format_time( pos / 60 );
+		p_out = format_time( pos / m_emu.frame_rate );
 	}
 
 #if 0
@@ -1947,6 +1956,13 @@ public:
 	LRESULT OnConfigureInput(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 	{
 		if ( m_controls ) m_controls->configure( ATL::_AtlBaseModule.GetModuleInstance(), m_hWnd );
+
+		return 0;
+	}
+
+	LRESULT OnConfigureDisplay(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+	{
+		do_display_config( ATL::_AtlBaseModule.GetModuleInstance(), m_hWnd, & display_config );
 
 		return 0;
 	}

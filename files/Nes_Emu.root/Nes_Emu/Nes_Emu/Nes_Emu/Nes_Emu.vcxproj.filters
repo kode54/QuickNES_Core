@@ -1,0 +1,199 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4b137a94-90bf-4444-85c0-fe41bbe40007}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm</Extensions>
+    </Filter>
+    <Filter Include="Source Files\display">
+      <UniqueIdentifier>{fe01f3ca-0b30-4694-b28e-7dda1e00c119}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\config">
+      <UniqueIdentifier>{4ba7daad-5d69-4b6b-81e0-34f131c668d1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\sound">
+      <UniqueIdentifier>{12efa33b-cd19-4a90-9b7e-4cd013a1d1bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\sound\dsound">
+      <UniqueIdentifier>{008f5c53-49ef-4a82-a6a8-9f0ec53d7301}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\input">
+      <UniqueIdentifier>{3b19828d-1cad-455a-8cf6-1bb727fb650c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\music">
+      <UniqueIdentifier>{a5b6d833-30e2-479a-8b97-6ff1e897203d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mappers">
+      <UniqueIdentifier>{f4aaed5e-cd0f-46e8-a25b-9da3daee8e64}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{5f2c67a5-bb3d-4b20-87dd-e5079c5e2723}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{7eb70036-88f2-4443-929a-bade6e4d6e56}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;jpg;jpeg;jpe;manifest</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Nes_Emu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="std_file_u.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="display\display.cpp">
+      <Filter>Source Files\display</Filter>
+    </ClCompile>
+    <ClCompile Include="display\display_config.cpp">
+      <Filter>Source Files\display</Filter>
+    </ClCompile>
+    <ClCompile Include="config\config.cpp">
+      <Filter>Source Files\config</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\sound_config.cpp">
+      <Filter>Source Files\sound</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\sound_out_dsound.cpp">
+      <Filter>Source Files\sound</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\sound_out_waveout.cpp">
+      <Filter>Source Files\sound</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\dsound\dsound.cpp">
+      <Filter>Source Files\sound\dsound</Filter>
+    </ClCompile>
+    <ClCompile Include="input\bind_list.cpp">
+      <Filter>Source Files\input</Filter>
+    </ClCompile>
+    <ClCompile Include="input\dinput.cpp">
+      <Filter>Source Files\input</Filter>
+    </ClCompile>
+    <ClCompile Include="input\guid_container.cpp">
+      <Filter>Source Files\input</Filter>
+    </ClCompile>
+    <ClCompile Include="input\input.cpp">
+      <Filter>Source Files\input</Filter>
+    </ClCompile>
+    <ClCompile Include="input\input_config.cpp">
+      <Filter>Source Files\input</Filter>
+    </ClCompile>
+    <ClCompile Include="music\trackbar.cpp">
+      <Filter>Source Files\music</Filter>
+    </ClCompile>
+    <ClCompile Include="music\uxtheme.cpp">
+      <Filter>Source Files\music</Filter>
+    </ClCompile>
+    <ClCompile Include="music\window_helper.cpp">
+      <Filter>Source Files\music</Filter>
+    </ClCompile>
+    <ClCompile Include="mappers\emu2413.cpp">
+      <Filter>Source Files\mappers</Filter>
+    </ClCompile>
+    <ClCompile Include="mappers\Fir_Resampler.cpp">
+      <Filter>Source Files\mappers</Filter>
+    </ClCompile>
+    <ClCompile Include="mappers\Mapper_Misc.cpp">
+      <Filter>Source Files\mappers</Filter>
+    </ClCompile>
+    <ClCompile Include="mappers\Mapper_Vrc7.cpp">
+      <Filter>Source Files\mappers</Filter>
+    </ClCompile>
+    <ClCompile Include="mappers\Nes_Vrc7.cpp">
+      <Filter>Source Files\mappers</Filter>
+    </ClCompile>
+    <ClCompile Include="mappers\register.cpp">
+      <Filter>Source Files\mappers</Filter>
+    </ClCompile>
+    <ClCompile Include="display\display_d3d9.cpp">
+      <Filter>Source Files\display</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="display\display.h">
+      <Filter>Source Files\display</Filter>
+    </ClInclude>
+    <ClInclude Include="display\display_config.h">
+      <Filter>Source Files\display</Filter>
+    </ClInclude>
+    <ClInclude Include="config\config.h">
+      <Filter>Source Files\config</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\sound_config.h">
+      <Filter>Source Files\sound</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\sound_out.h">
+      <Filter>Source Files\sound</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\dsound\ds_stream.h">
+      <Filter>Source Files\sound\dsound</Filter>
+    </ClInclude>
+    <ClInclude Include="input\bind_list.h">
+      <Filter>Source Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="input\dinput.h">
+      <Filter>Source Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="input\guid_container.h">
+      <Filter>Source Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="input\input.h">
+      <Filter>Source Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="input\input_config.h">
+      <Filter>Source Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="music\trackbar.h">
+      <Filter>Source Files\music</Filter>
+    </ClInclude>
+    <ClInclude Include="music\uxtheme.h">
+      <Filter>Source Files\music</Filter>
+    </ClInclude>
+    <ClInclude Include="music\window_helper.h">
+      <Filter>Source Files\music</Filter>
+    </ClInclude>
+    <ClInclude Include="mappers\Fir_Resampler.h">
+      <Filter>Source Files\mappers</Filter>
+    </ClInclude>
+    <ClInclude Include="AboutDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ControlsDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MainFrm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Nes_EmuView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="std_file_u.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\hourglass.ico">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\Nes_Emu.ico">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\toolbar.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Nes_Emu.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

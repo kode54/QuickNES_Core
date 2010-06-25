@@ -1,40 +1,54 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 9.00
-# Visual Studio 2005
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Nes_Emu", "Nes_Emu.vcproj", "{BF3CA15C-51D8-4785-8AB9-32F72D5E08CB}"
-	ProjectSection(ProjectDependencies) = postProject
-		{663FB33A-7E53-42B7-A33C-6737E3A0EF02} = {663FB33A-7E53-42B7-A33C-6737E3A0EF02}
-	EndProjectSection
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Nes_Emu", "Nes_Emu.vcxproj", "{BF3CA15C-51D8-4785-8AB9-32F72D5E08CB}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lib", "..\..\Nes_Emu-0.5.6\win32\lib.vcproj", "{663FB33A-7E53-42B7-A33C-6737E3A0EF02}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lib", "..\..\Nes_Emu-0.7.0b1\win32\lib.vcxproj", "{663FB33A-7E53-42B7-A33C-6737E3A0EF02}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nes_ntsc", "..\nes_ntsc\nes_ntsc.vcxproj", "{0A834B63-1293-4BD8-9F5A-87EA938EB563}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zlib", "..\..\zlib\win32\zlib\zlib.vcxproj", "{FBF00162-1B31-4CD0-9F78-3ADA304E325F}"
 EndProject
 Global
-	GlobalSection(TeamFoundationVersionControl) = preSolution
-		SccNumberOfProjects = 3
-		SccProjectName0 = \u0022$/emulation/Nes_Emu.root/Nes_Emu\u0022,\u0020DAAAAAAA
-		SccLocalPath0 = ..\\..
-		SccProvider0 = MSSCCI:Microsoft\u0020Visual\u0020SourceSafe
-		SccProjectFilePathRelativizedFromConnection0 = Nes_Emu\\Nes_Emu\\
-		SccProjectUniqueName1 = Nes_Emu.vcproj
-		SccLocalPath1 = ..\\..
-		SccProjectFilePathRelativizedFromConnection1 = Nes_Emu\\Nes_Emu\\
-		SccProjectUniqueName2 = ..\\..\\Nes_Emu-0.5.6\\win32\\lib.vcproj
-		SccLocalPath2 = ..\\..
-		SccProjectFilePathRelativizedFromConnection2 = Nes_Emu-0.5.6\\win32\\
-	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
+		Debug|x64 = Debug|x64
 		Release|Win32 = Release|Win32
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{BF3CA15C-51D8-4785-8AB9-32F72D5E08CB}.Debug|Win32.ActiveCfg = Debug|Win32
 		{BF3CA15C-51D8-4785-8AB9-32F72D5E08CB}.Debug|Win32.Build.0 = Debug|Win32
+		{BF3CA15C-51D8-4785-8AB9-32F72D5E08CB}.Debug|x64.ActiveCfg = Debug|x64
+		{BF3CA15C-51D8-4785-8AB9-32F72D5E08CB}.Debug|x64.Build.0 = Debug|x64
 		{BF3CA15C-51D8-4785-8AB9-32F72D5E08CB}.Release|Win32.ActiveCfg = Release|Win32
 		{BF3CA15C-51D8-4785-8AB9-32F72D5E08CB}.Release|Win32.Build.0 = Release|Win32
+		{BF3CA15C-51D8-4785-8AB9-32F72D5E08CB}.Release|x64.ActiveCfg = Release|x64
+		{BF3CA15C-51D8-4785-8AB9-32F72D5E08CB}.Release|x64.Build.0 = Release|x64
 		{663FB33A-7E53-42B7-A33C-6737E3A0EF02}.Debug|Win32.ActiveCfg = Debug|Win32
 		{663FB33A-7E53-42B7-A33C-6737E3A0EF02}.Debug|Win32.Build.0 = Debug|Win32
+		{663FB33A-7E53-42B7-A33C-6737E3A0EF02}.Debug|x64.ActiveCfg = Debug|x64
+		{663FB33A-7E53-42B7-A33C-6737E3A0EF02}.Debug|x64.Build.0 = Debug|x64
 		{663FB33A-7E53-42B7-A33C-6737E3A0EF02}.Release|Win32.ActiveCfg = Release|Win32
 		{663FB33A-7E53-42B7-A33C-6737E3A0EF02}.Release|Win32.Build.0 = Release|Win32
+		{663FB33A-7E53-42B7-A33C-6737E3A0EF02}.Release|x64.ActiveCfg = Release|x64
+		{663FB33A-7E53-42B7-A33C-6737E3A0EF02}.Release|x64.Build.0 = Release|x64
+		{0A834B63-1293-4BD8-9F5A-87EA938EB563}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0A834B63-1293-4BD8-9F5A-87EA938EB563}.Debug|Win32.Build.0 = Debug|Win32
+		{0A834B63-1293-4BD8-9F5A-87EA938EB563}.Debug|x64.ActiveCfg = Debug|x64
+		{0A834B63-1293-4BD8-9F5A-87EA938EB563}.Debug|x64.Build.0 = Debug|x64
+		{0A834B63-1293-4BD8-9F5A-87EA938EB563}.Release|Win32.ActiveCfg = Release|Win32
+		{0A834B63-1293-4BD8-9F5A-87EA938EB563}.Release|Win32.Build.0 = Release|Win32
+		{0A834B63-1293-4BD8-9F5A-87EA938EB563}.Release|x64.ActiveCfg = Release|x64
+		{0A834B63-1293-4BD8-9F5A-87EA938EB563}.Release|x64.Build.0 = Release|x64
+		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Debug|Win32.ActiveCfg = Debug staticlink|Win32
+		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Debug|Win32.Build.0 = Debug staticlink|Win32
+		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Debug|x64.ActiveCfg = Debug|x64
+		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Debug|x64.Build.0 = Debug|x64
+		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Release|Win32.ActiveCfg = Release staticlink|Win32
+		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Release|Win32.Build.0 = Release staticlink|Win32
+		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Release|x64.ActiveCfg = Release|x64
+		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

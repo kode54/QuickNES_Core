@@ -21,6 +21,9 @@ class sound_out_i_waveout : public sound_out
 		WAVEHDR header;
 		HANDLE  sync;
 	};
+
+	void          * hwnd;
+
 	char          * buffer;
 
 	unsigned        n_packets, cur_packet;
@@ -53,8 +56,9 @@ public:
 		close();
 	}
 
-	virtual const char* open( unsigned sample_rate, unsigned nch, unsigned max_samples_per_frame, unsigned num_frames )
+	virtual const char* open( void * hwnd, unsigned sample_rate, unsigned nch, unsigned max_samples_per_frame, unsigned num_frames )
 	{
+		this->hwnd = hwnd;
 		this->sample_rate = sample_rate;
 		this->nch = nch;
 		this->max_samples_per_frame = max_samples_per_frame;
@@ -170,7 +174,7 @@ public:
 		{
 			if ( ! --reopen_count )
 			{
-				const char * err = open( sample_rate, nch, max_samples_per_frame, num_frames );
+				const char * err = open( hwnd, sample_rate, nch, max_samples_per_frame, num_frames );
 				if ( err )
 				{
 					reopen_count = 60 * 5;

@@ -84,3 +84,28 @@ void sound_config_save( const sound_config_t & config, const TCHAR * save_path )
 		err = out.write( & temp, sizeof( temp ) );
 	}
 }
+
+display_config_t::display_config_t()
+{
+	vsync = 1;
+}
+
+static const GUID display_signature = { 0x4ac1870, 0xd775, 0x4abf, { 0x85, 0xcb, 0x47, 0x3e, 0x77, 0xe4, 0xf5, 0xd2 } };
+
+void display_config_load( display_config_t & config, const TCHAR * save_path )
+{
+	GUID temp;
+	Std_File_Reader_u in;
+	const char * err = in.open( ( std::tstring( save_path ) + _T( "display.cfg" ) ).c_str() );
+	if ( ! err ) err = in.read( & temp, sizeof( temp ) );
+	if ( ! err && temp != display_signature ) err = "Invalid signature";
+	if ( ! err ) err = in.read( & config, sizeof( config ) );
+}
+
+void display_config_save( const display_config_t & config, const TCHAR * save_path )
+{
+	Std_File_Writer_u out;
+	const char * err = out.open( ( std::tstring( save_path ) + _T( "display.cfg" ) ).c_str() );
+	if ( ! err ) err = out.write( & display_signature, sizeof( display_signature ) );
+	if ( ! err ) err = out.write( & config, sizeof( config ) );
+}

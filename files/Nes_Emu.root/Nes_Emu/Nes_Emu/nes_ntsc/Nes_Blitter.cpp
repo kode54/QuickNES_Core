@@ -70,6 +70,12 @@ blargg_err_t Nes_Blitter::setup( setup_t const& s )
 	return 0;
 }
 
+#if defined(_M_IA64) || defined(_M_X64)
+typedef unsigned __int64 t_pointer;
+#else
+typedef unsigned int t_pointer;
+#endif
+
 void Nes_Blitter::blit( Nes_Emu& emu, void* out, long out_pitch )
 {
 	unsigned short const* palette = (unsigned short const*) emu.frame().palette;
@@ -77,11 +83,25 @@ void Nes_Blitter::blit( Nes_Emu& emu, void* out, long out_pitch )
 	long in_pitch = emu.frame().pitch;
 	unsigned char* in = emu.frame().pixels + setup_.crop.top * in_pitch + setup_.crop.left;
 
+	void* out_orig = out;
+	void* out_aligned = (void*)((((t_pointer)out) + 15) & ~15);
+
+	if ( out != out_aligned )
+	{
+		out = _mm_malloc( out_pitch * height, 16 );
+	}
+
 	if ( g_have_sse2 )
 		nes_ntsc_blit( ntsc, in, in_pitch, burst_phase, width, height, out, out_pitch, palette );
 	else if ( g_have_sse && g_have_mmx )
 		nes_ntsc_blit_mmx2( ntsc, in, in_pitch, burst_phase, width, height, out, out_pitch, palette );
 	else if ( g_have_mmx )
 		nes_ntsc_blit_mmx( ntsc, in, in_pitch, burst_phase, width, height, out, out_pitch, palette );
+
+	if ( out != out_aligned )
+	{
+		memcpy( out_orig, out, out_pitch * height );
+		_mm_free( out );
+	}
 }
 
