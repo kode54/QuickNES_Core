@@ -10,6 +10,23 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zlib", "..\..\zlib\win32\zlib\zlib.vcxproj", "{FBF00162-1B31-4CD0-9F78-3ADA304E325F}"
 EndProject
 Global
+	GlobalSection(TeamFoundationVersionControl) = preSolution
+		SccNumberOfProjects = 5
+		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccTeamFoundationServer = http://sabin:8080/tfs/defaultcollection
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = Nes_Emu.vcxproj
+		SccLocalPath1 = .
+		SccProjectUniqueName2 = ..\\..\\Nes_Emu-0.7.0b1\\win32\\lib.vcxproj
+		SccProjectName2 = ../../Nes_Emu-0.7.0b1/win32
+		SccLocalPath2 = ..\\..\\Nes_Emu-0.7.0b1\\win32
+		SccProjectUniqueName3 = ..\\nes_ntsc\\nes_ntsc.vcxproj
+		SccProjectName3 = ../nes_ntsc
+		SccLocalPath3 = ..\\nes_ntsc
+		SccProjectUniqueName4 = ..\\..\\zlib\\win32\\zlib\\zlib.vcxproj
+		SccProjectName4 = ../../../../../../foobar2000/files/plugins.root/plugins/zlib/win32/zlib
+		SccLocalPath4 = ..\\..\\zlib\\win32\\zlib
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		Debug|x64 = Debug|x64
