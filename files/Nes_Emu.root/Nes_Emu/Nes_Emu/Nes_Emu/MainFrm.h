@@ -1531,7 +1531,7 @@ public:
 			int begin = end - size + 1;
 			if ( begin < film.begin() || begin > film.end() )
 				begin = film.begin();
-			film.write( out, period, begin, end );
+			film.write( out, begin, end, period );
 		}
 	}
 
