@@ -15,7 +15,8 @@ public:
 		typedef enum
 		{
 			ev_key,
-			ev_joy
+			ev_joy,
+			ev_xinput
 		} event_type;
 
 		typedef enum
@@ -33,16 +34,23 @@ public:
 
 		typedef enum
 		{
+			xinput_axis,
+			xinput_trigger,
+			xinput_button
+		} xinput_type;
+
+		typedef enum
+		{
 			axis_center,
 			axis_negative,
 			axis_positive
-		} joy_axis_motion;
+		} axis_motion;
 
 		typedef enum
 		{
 			button_up,
 			button_down
-		} joy_button_motion;
+		} button_motion;
 
 		event_type type;
 
@@ -65,13 +73,33 @@ public:
 
 				union
 				{
-					joy_axis_motion axis;
+					axis_motion axis;
 
-					joy_button_motion button;
+					button_motion button;
 
 					unsigned pov_angle;
 				};
+
+				unsigned value;
 			} joy;
+
+			struct
+			{
+				unsigned index;
+
+				xinput_type type;
+
+				unsigned which;
+
+				union
+				{
+					axis_motion axis;
+
+					button_motion button;
+				};
+
+				unsigned value;
+			} xinput;
 		};
 	};
 

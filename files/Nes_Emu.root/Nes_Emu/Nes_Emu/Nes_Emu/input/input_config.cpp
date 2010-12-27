@@ -17,7 +17,7 @@ static const TCHAR * item_roots[] = { _T( "Pad 1" ), _T( "Pad 2" ), _T( "Command
 
 static const TCHAR * item_pad[] = { _T( "A" ), _T( "B" ), _T( "Select" ), _T( "Start" ), _T( "Up" ), _T( "Down" ), _T( "Left" ), _T( "Right" ) };
 
-static const TCHAR * item_command[] = { _T( "Rewind (toggle)" ), _T( "Rewind (hold)" ), _T("Fast forward (toggle)"), _T("Fast forward (hold)"), _T( "Toggle pad 1 rapid fire" ), _T( "Toggle pad 2 rapid fire" ) };
+static const TCHAR * item_command[] = { _T( "Rewind (toggle)" ), _T( "Rewind (hold)" ), _T( "Rewind (analog hold)" ), _T( "Fast forward (toggle)" ), _T( "Fast forward (hold)" ), _T( "Fast forward (analog hold)" ), _T( "Toggle pad 1 rapid fire" ), _T( "Toggle pad 2 rapid fire" ) };
 
 class input_config
 {
@@ -183,7 +183,7 @@ public:
 					tvi.hParent = item;
 					tvi.hInsertAfter = TVI_LAST;
 
-					for ( unsigned i = 0; i < 6; ++i )
+					for ( unsigned i = 0; i < 8; ++i )
 					{
 						tvi.item.pszText = ( TCHAR * ) item_command[ i ];
 
@@ -322,6 +322,40 @@ private:
 				out << _T( "pov " ) << e.joy.which << _T( " " ) << e.joy.pov_angle << _T( '°' );
 			}
 		}
+		else if ( e.type == dinput::di_event::ev_xinput )
+		{
+			out << _T("Xbox360 controller #");
+			out << e.xinput.index + 1;
+			out << _T( ' ' );
+
+			if ( e.xinput.type == dinput::di_event::xinput_axis )
+			{
+				if ( e.xinput.which & 2 ) out << _T( "right" );
+				else out << _T( "left" );
+				out << _T( " thumb stick " );
+				if ( e.xinput.which & 1 )
+				{
+					if ( e.xinput.axis == dinput::di_event::axis_positive ) out << _T( "up" );
+					else out << _T( "down" );
+				}
+				else
+				{
+					if ( e.xinput.axis == dinput::di_event::axis_positive ) out << _T( "right" );
+					else out << _T( "left" );
+				}
+			}
+			else if ( e.xinput.type == dinput::di_event::xinput_trigger )
+			{
+				if ( e.xinput.which == 0 ) out << _T( "left" );
+				else out << _T( "right" );
+				out << _T( " analog trigger" );
+			}
+			else if ( e.xinput.type == dinput::di_event::xinput_button )
+			{
+				static const TCHAR * xinput_button[] = { _T( "D-pad up" ), _T( "D-pad down" ), _T( "D-pad left" ), _T( "D-pad right" ), _T( "Start button" ), _T( "Back button" ), _T( "left thumb stick button" ), _T( "right thumb stick button" ), _T( "left shoulder button" ), _T( "right shoulder button" ), _T( "A button" ), _T( "B button" ), _T( "X button" ), _T( "Y button" ) };
+				out << xinput_button[ e.xinput.which ];
+			}
+		}
 	}
 
 	bool process_events( std::vector< dinput::di_event > events )
@@ -369,6 +403,30 @@ private:
 					else if ( it->joy.type == dinput::di_event::joy_pov )
 					{
 						if ( it->joy.pov_angle == ~0 )
+						{
+							again = true;
+							last = it - events.begin();
+							events.erase( it );
+							break;
+						}
+					}
+				}
+				else if ( it->type == dinput::di_event::ev_xinput )
+				{
+					if ( it->xinput.type == dinput::di_event::xinput_axis )
+					{
+						if ( it->xinput.axis == dinput::di_event::axis_center )
+						{
+							again = true;
+							last = it - events.begin();
+							events.erase( it );
+							break;
+						}
+					}
+					else if ( it->xinput.type == dinput::di_event::xinput_trigger ||
+						it->xinput.type == dinput::di_event::xinput_button )
+					{
+						if ( it->xinput.button == dinput::di_event::button_up )
 						{
 							again = true;
 							last = it - events.begin();
@@ -426,7 +484,7 @@ private:
 
 				str += item_pad[ action & 7 ];
 			}
-			else if ( action >= 16 && action <= 21 ) str = item_command[ action - 16 ];
+			else if ( action >= 16 && action <= 23 ) str = item_command[ action - 16 ];
 
 			lvi.iSubItem = 1;
 			lvi.pszText = ( TCHAR * ) str.c_str();

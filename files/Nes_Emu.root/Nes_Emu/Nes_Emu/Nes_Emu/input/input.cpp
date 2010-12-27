@@ -153,11 +153,11 @@ public:
 		bl->strobe( 1 );
 	}
 
-	virtual int get_direction()
+	virtual int get_speed() const
 	{
 		int ret;
 
-		ret = bl->get_direction();
+		ret = bl->get_speed();
 
 		return ret;
 	}
@@ -167,23 +167,9 @@ public:
 		bl->reset();
 	}
 
-	virtual void set_direction( int dir )
+	virtual void set_speed( int speed )
 	{
-		bl->set_direction( dir );
-	}
-
-	virtual bool get_forward()
-	{
-		bool ret;
-
-		ret = bl->get_forward();
-
-		return ret;
-	}
-
-	virtual void set_forward( bool forward )
-	{
-		bl->set_forward( forward );
+		bl->set_speed( speed );
 	}
 
 	virtual void set_focus( bool is_focused )

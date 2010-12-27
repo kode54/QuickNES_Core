@@ -246,13 +246,9 @@ class CMainFrame : public CFrameWindowImpl<CMainFrame>, public CUpdateUI<CMainFr
 	}
 	emu_state;
 
-	int emu_direction, last_direction;
-
-	int emu_speed, emu_frameskip_delta;
+	int emu_speed;
 
 	int emu_step;
-
-	bool emu_frameskip;
 
 	// for trackbar
 	bool emu_seeking;
@@ -388,20 +384,7 @@ public:
 			{
 				m_controls->poll();
 
-				emu_direction = m_controls->get_direction();
-
-				if ( emu_frameskip != m_controls->get_forward() )
-				{
-					emu_frameskip = m_controls->get_forward();
-					if ( emu_frameskip )
-					{
-						emu_frameskip_delta = 1;
-					}
-					else
-					{
-						emu_frameskip_delta = -1;
-					}
-				}
+				emu_speed = m_controls->get_speed();
 
 				input_now = m_controls->read();
 
@@ -410,15 +393,13 @@ public:
 					unsigned change = input_now ^ input_last;
 					if ( input_now & change )
 					{
-						m_controls->set_direction( 1 );
-
 						m_emu.film().trim( m_emu.film().begin(), m_emu.tell() );
 					}
 
 					input_last = input_now;
 				}
 
-				if ( emu_direction < 0 && m_emu.tell() <= m_emu.film().begin() )
+				if ( emu_speed < 0 && m_emu.tell() <= m_emu.film().begin() )
 				{
 					set_status( IDS_PAUSED );
 					return;
@@ -427,13 +408,10 @@ public:
 
 			if ( m_video )
 			{
-				if ( emu_direction != last_direction )
-					emu_direction -= last_direction;
-
 				if ( !core_config.record_indefinitely )
 				{
 					long begin = m_film.constrain( m_film.end() - 5 * 60 * m_emu.frame_rate );
-					if ( emu_direction < 0 && m_emu.tell() <= begin )
+					if ( emu_speed < 0 && m_emu.tell() <= begin )
 					{
 						m_emu.seek( begin );
 						set_status( IDS_PAUSED );
@@ -442,8 +420,8 @@ public:
 					m_film.trim( begin, m_film.end() );
 				}
 
-				int dir = emu_direction;
-				if ( ! emu_seeking ) dir *= emu_speed;
+				int dir = emu_speed >= 0 ? 1 : -1;
+				if ( ! emu_seeking ) dir = emu_speed;
 				while ( dir )
 				{
 					if ( dir < 0 && m_emu.tell() <= m_film.begin() )
@@ -469,21 +447,13 @@ public:
 					if ( m_controls && m_emu.frame().joypad_read_count > 0 )
 						m_controls->strobe();
 
-					last_direction = dir;
 					dir += ( dir < 0 ? 1 : -1 );
 
-					if ( m_controls && dir > 0 )
+					if ( m_controls )
 					{
 						m_controls->poll();
 						input_now = m_controls->read();
 					}
-				}
-
-				if ( emu_frameskip_delta )
-				{
-					if ( emu_frameskip_delta > 0 && emu_speed < 10 ) emu_speed++;
-					else if ( emu_frameskip_delta < 0 && emu_speed > 1 ) emu_speed--;
-					else emu_frameskip_delta = 0;
 				}
 
 				void * fb;
@@ -532,9 +502,10 @@ public:
 				m_TrackBar.set_range( m_emu.film().begin(), m_emu.film().end() );
 				m_TrackBar.set_position( m_emu.tell() );
 			}
-			UISetCheck( ID_CORE_REWIND, emu_direction < 0 );
+			UISetCheck( ID_CORE_REWIND, emu_speed < 0 );
+			UISetCheck( ID_CORE_FASTFORWARD, emu_speed > 1 );
 
-			set_status( emu_direction < 0 ? IDS_REWINDING : ( ( m_emu.tell() < m_emu.film().end() ) ? IDS_PLAYING : IDS_RECORDING ) );
+			set_status( emu_speed < 0 ? IDS_REWINDING : ( ( m_emu.tell() < m_emu.film().end() ) ? IDS_PLAYING : IDS_RECORDING ) );
 
 			if ( emu_step )
 			{
@@ -1086,11 +1057,7 @@ public:
 		extension.LoadString( IDS_CART_EXTENSION );
 		if ( file_picker( m_hWnd, path, title, filter, extension, false ) )
 		{
-			emu_direction = 1;
-			last_direction = 0;
 			emu_speed = 1;
-			emu_frameskip = false;
-			emu_frameskip_delta = 0;
 			emu_step = 0;
 			emu_seeking = false;
 			emu_was_paused = false;
@@ -1842,11 +1809,7 @@ public:
 	{
 		if ( emu_state != emu_stopped )
 		{
-			emu_direction = 1;
-			last_direction = 0;
 			emu_speed = 1;
-			emu_frameskip = false;
-			emu_frameskip_delta = 0;
 			emu_step = 0;
 			emu_state = emu_running;
 			emu_seeking = false;
@@ -1902,9 +1865,10 @@ public:
 	{
 		if ( emu_state != emu_stopped )
 		{
-			emu_direction = -emu_direction;
-			if ( m_controls ) m_controls->set_direction( emu_direction );
-			UISetCheck( ID_CORE_REWIND, emu_direction < 0 );
+			if ( emu_speed > 0 ) emu_speed = -1;
+			else emu_speed = 1;
+			if ( m_controls ) m_controls->set_speed( emu_speed );
+			UISetCheck( ID_CORE_REWIND, emu_speed < 0 );
 		}
 
 		return 0;
@@ -1914,18 +1878,10 @@ public:
 	{
 		if ( emu_state != emu_stopped )
 		{
-			if ( ! emu_frameskip )
-			{
-				emu_frameskip = true;
-				emu_frameskip_delta = 1;
-			}
-			else
-			{
-				emu_frameskip = false;
-				emu_frameskip_delta = -1;
-			}
-			if ( m_controls ) m_controls->set_forward( emu_frameskip );
-			UISetCheck( ID_CORE_FASTFORWARD, emu_frameskip );
+			if ( emu_speed <= 1 ) emu_speed = 10;
+			else emu_speed = 1;
+			if ( m_controls ) m_controls->set_speed( emu_speed );
+			UISetCheck( ID_CORE_FASTFORWARD, emu_speed > 1 );
 		}
 
 		return 0;

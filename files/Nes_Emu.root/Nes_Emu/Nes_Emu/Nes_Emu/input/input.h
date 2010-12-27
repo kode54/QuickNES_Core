@@ -27,13 +27,9 @@ public:
 
 	virtual void strobe() = 0;
 
-	virtual int get_direction() = 0;
+	virtual int get_speed() const = 0;
 
-	virtual void set_direction( int ) = 0;
-
-	virtual bool get_forward() = 0;
-
-	virtual void set_forward( bool ) = 0;
+	virtual void set_speed( int ) = 0;
 
 	virtual void reset() = 0;
 
