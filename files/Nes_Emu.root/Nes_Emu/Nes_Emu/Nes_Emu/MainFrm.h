@@ -18,7 +18,7 @@
 
 #include <zlib.h>
 
-static const int sound_buffer_frames = 6;
+static const int sound_buffer_frames = 4;
 
 /*static const int top_clip = 8; // first scanlines not visible on most televisions
 static const int bottom_clip = 4; // last scanlines ^*/
@@ -315,7 +315,7 @@ public:
 
 	void config_sound()
 	{
-		Nes_Emu::equalizer_t eq = Nes_Emu::nes_eq;
+		Nes_Emu::equalizer_t eq = Nes_Emu::tv_eq;
 		if ( sound_config.effects_enabled )
 		{
 			// bass - logarithmic, 2 to 8194 Hz

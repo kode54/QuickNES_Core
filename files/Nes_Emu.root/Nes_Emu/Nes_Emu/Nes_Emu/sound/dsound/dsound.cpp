@@ -350,7 +350,7 @@ bool ds_stream_i::update()
 		if (prebuffer_size_ms > 10000) prebuffer_size_ms = 10000;
 		prebuffer_bytes = ms2bytes(prebuffer_size_ms);
 
-		write_min_bytes = ms2bytes(50);
+		write_min_bytes = ms2bytes(1);
 		write_max_bytes = ms2bytes(write_max_ms);
 
 		WAVEFORMATEX wfx;
