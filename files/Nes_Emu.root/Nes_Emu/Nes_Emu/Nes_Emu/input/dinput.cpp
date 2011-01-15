@@ -9,6 +9,10 @@
 
 #include <XInput.h>
 
+#ifndef XUSER_MAX_COUNT
+#define XUSER_MAX_COUNT 4
+#endif
+
 #include <wbemidl.h>
 
 #include <string>

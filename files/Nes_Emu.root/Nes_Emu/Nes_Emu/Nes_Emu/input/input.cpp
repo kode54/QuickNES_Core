@@ -15,7 +15,7 @@
 #include "nes_emu/abstract_file.h"
 
 #pragma comment( lib, "dinput8.lib" )
-#pragma comment( lib, "dxguid.lib" )
+//#pragma comment( lib, "dxguid.lib" )
 
 static const GUID g_signature = { 0x925c561e, 0xfdfe, 0x40b3, { 0x9a, 0xe9, 0xbf, 0x82, 0x85, 0x86, 0x4b, 0xb5 } };
 

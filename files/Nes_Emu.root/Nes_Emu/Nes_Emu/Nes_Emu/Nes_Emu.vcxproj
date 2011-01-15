@@ -243,7 +243,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="display\display.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="display\display_d3d9.cpp" />
+    <ClCompile Include="guids.cpp" />
     <ClCompile Include="Nes_Emu.cpp" />
     <ClCompile Include="std_file_u.cpp" />
     <ClCompile Include="stdafx.cpp">
@@ -252,7 +257,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="display\display.cpp" />
     <ClCompile Include="display\display_config.cpp" />
     <ClCompile Include="config\config.cpp" />
     <ClCompile Include="sound\sound_config.cpp" />

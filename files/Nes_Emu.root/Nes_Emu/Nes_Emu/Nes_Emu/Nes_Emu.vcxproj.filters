@@ -45,9 +45,6 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="display\display.cpp">
-      <Filter>Source Files\display</Filter>
-    </ClCompile>
     <ClCompile Include="display\display_config.cpp">
       <Filter>Source Files\display</Filter>
     </ClCompile>
@@ -110,6 +107,12 @@
     </ClCompile>
     <ClCompile Include="display\display_d3d9.cpp">
       <Filter>Source Files\display</Filter>
+    </ClCompile>
+    <ClCompile Include="display\display.cpp">
+      <Filter>Source Files\display</Filter>
+    </ClCompile>
+    <ClCompile Include="guids.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

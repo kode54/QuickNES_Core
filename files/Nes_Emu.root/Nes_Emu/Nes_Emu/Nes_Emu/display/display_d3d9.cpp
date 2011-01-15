@@ -7,10 +7,8 @@
 
 #define DIRECT3D_VERSION 0x0900
 #include <d3d9.h>
-#include <d3dx9.h>
 
 #pragma comment( lib, "d3d9.lib" )
-#pragma comment( lib, "d3dx9.lib" )
 
 unsigned rounded_power_of_two(unsigned n)
 {
