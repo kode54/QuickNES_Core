@@ -19,6 +19,9 @@
 
 #include <assert.h>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include "guid_container.h"
 
 #pragma comment( lib, "WbemUuid.lib" )
@@ -71,12 +74,12 @@ class dinput_i : public dinput
 	tGetRawInputDeviceList   pGetRawInputDeviceList;
 	tGetRawInputDeviceInfoW  pGetRawInputDeviceInfoW;
 
-	static bool xinput_axis_motion( SHORT previous, SHORT current, di_event::axis_motion * motion_out )
+	static bool xinput_left_stick_motion( SHORT previous, SHORT current, di_event::axis_motion * motion_out )
 	{
 		di_event::axis_motion current_motion;
 
-		if ( current >= 10240 ) current_motion = di_event::axis_positive;
-		else if ( current <= -10240 ) current_motion = di_event::axis_negative;
+		if ( current >= XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE ) current_motion = di_event::axis_positive;
+		else if ( current <= -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE ) current_motion = di_event::axis_negative;
 		else current_motion = di_event::axis_center;
 
 		if ( previous != current )
@@ -88,26 +91,52 @@ class dinput_i : public dinput
 		return false;
 	}
 
-	static int xinput_axis_deadzone( SHORT axis )
+	static bool xinput_right_stick_motion( SHORT previous, SHORT current, di_event::axis_motion * motion_out )
+	{
+		di_event::axis_motion current_motion;
+
+		if ( current >= XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE ) current_motion = di_event::axis_positive;
+		else if ( current <= -XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE ) current_motion = di_event::axis_negative;
+		else current_motion = di_event::axis_center;
+
+		if ( previous != current )
+		{
+			*motion_out = current_motion;
+			return true;
+		}
+
+		return false;
+	}
+
+	static int xinput_left_stick_deadzone( SHORT axis )
 	{
 		int iaxis = axis;
 		int abs_axis = abs( ((int)iaxis) );
-		if ( abs_axis < 10240 ) return 0;
+		if ( abs_axis < XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE ) return 0;
 		int sign_axis = iaxis >= 0 ? 1 : -1;
-		return ( abs_axis - 10240 ) * 32767 / ( 32767 - 10240 ) * sign_axis;
+		return ( abs_axis - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE ) * 32767 / ( 32767 - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE ) * sign_axis;
+	}
+
+	static int xinput_right_stick_deadzone( SHORT axis )
+	{
+		int iaxis = axis;
+		int abs_axis = abs( ((int)iaxis) );
+		if ( abs_axis < XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE ) return 0;
+		int sign_axis = iaxis >= 0 ? 1 : -1;
+		return ( abs_axis - XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE ) * 32767 / ( 32767 - XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE ) * sign_axis;
 	}
 
 	static bool xinput_trigger_motion( BYTE previous, BYTE current, di_event::button_motion * motion_out )
 	{
 		if ( current < previous ) { *motion_out = di_event::button_up; return true; }
-		else if ( current >= 32 && current > previous ) { *motion_out = di_event::button_down; return true; }
+		else if ( current >= XINPUT_GAMEPAD_TRIGGER_THRESHOLD && current > previous ) { *motion_out = di_event::button_down; return true; }
 		return false;
 	}
 
 	static int xinput_trigger_deadzone( BYTE trigger )
 	{
-		if ( trigger < 32 ) return 0;
-		return ( trigger - 32 ) * 255 / ( 255 - 32 );
+		if ( trigger < XINPUT_GAMEPAD_TRIGGER_THRESHOLD ) return 0;
+		return ( trigger - XINPUT_GAMEPAD_TRIGGER_THRESHOLD ) * 255 / ( 255 - XINPUT_GAMEPAD_TRIGGER_THRESHOLD );
 	}
 
 	bool is_xinput( const GUID * guid )
@@ -454,15 +483,15 @@ public:
 				e.xinput.index = i;
 				e.xinput.type = di_event::xinput_axis;
 
-#define XINPUT_PUSH_AXIS(n, v) \
+#define XINPUT_PUSH_AXIS(n, stick, v) \
 				e.xinput.which = n; \
-				e.xinput.value = (unsigned)((xinput_axis_deadzone(state.Gamepad.##v)) + 32768); \
-				if ( xinput_axis_motion( xinput_last_state[ i ].Gamepad.##v, state.Gamepad.##v, &e.xinput.axis ) ) events.push_back( e )
+				e.xinput.value = (unsigned)((xinput_##stick##_stick_deadzone(state.Gamepad.##v)) + 32768); \
+				if ( xinput_##stick##_stick_motion( xinput_last_state[ i ].Gamepad.##v, state.Gamepad.##v, &e.xinput.axis ) ) events.push_back( e )
 
-				XINPUT_PUSH_AXIS( 0, sThumbLX );
-				XINPUT_PUSH_AXIS( 1, sThumbLY );
-				XINPUT_PUSH_AXIS( 2, sThumbRX );
-				XINPUT_PUSH_AXIS( 3, sThumbRY );
+				XINPUT_PUSH_AXIS( 0, left, sThumbLX );
+				XINPUT_PUSH_AXIS( 1, left, sThumbLY );
+				XINPUT_PUSH_AXIS( 2, right, sThumbRX );
+				XINPUT_PUSH_AXIS( 3, right, sThumbRY );
 
 #undef XINPUT_PUSH_AXIS
 
