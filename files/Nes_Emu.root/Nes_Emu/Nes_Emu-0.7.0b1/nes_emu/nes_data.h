@@ -139,11 +139,15 @@ struct ppu_state_t
 	byte pixel_x;               // fine-scroll (0-7)
 	byte unused;
 	byte palette [0x20];        // entries $10, $14, $18, $1c should be ignored
+	BOOST::uint16_t decay_low;
+	BOOST::uint16_t decay_high;
+	byte open_bus;
+	byte unused2[3];
 	
 	enum { tag = FOUR_CHAR('PPUR') };
 	void swap();
 };
-BOOST_STATIC_ASSERT( sizeof (ppu_state_t) == 12 + 0x20 );
+BOOST_STATIC_ASSERT( sizeof (ppu_state_t) == 20 + 0x20 );
 
 struct mmc1_state_t
 {
