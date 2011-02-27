@@ -7,32 +7,19 @@
 class Std_File_Reader_u : public Std_File_Reader
 {
 public:
-	error_t open( const TCHAR* path );
+	blargg_err_t open( const TCHAR* path );
 };
 
 class Std_File_Writer_u : public Std_File_Writer
 {
 public:
-	error_t open( const TCHAR* path );
+	blargg_err_t open( const TCHAR* path );
 };
 
-class Gzip_File_Reader_u : public File_Reader
+class Gzip_File_Reader_u : public Gzip_File_Reader
 {
-	void* file_;
-	long size_;
 public:
-	Gzip_File_Reader_u();
-	~Gzip_File_Reader_u();
-
-	error_t open( const TCHAR* );
-
-	long size() const;
-	long read_avail( void*, long );
-
-	long tell() const;
-	error_t seek( long );
-
-	void close();
+	blargg_err_t open( const TCHAR* );
 };
 
 class Gzip_File_Writer_u : public Data_Writer

@@ -101,7 +101,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>c:\programming\nes_emu-0.7.0b1;..;c:\programming\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;c:\programming\nes_emu-0.7.0b1;..;c:\programming\foobar\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;STRICT;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -179,7 +179,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>c:\programming\nes_emu-0.7.0b1;..;c:\programming\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;c:\programming\nes_emu-0.7.0b1;..;c:\programming\foobar\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;STRICT;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>
       </ExceptionHandling>
@@ -277,6 +277,8 @@
     <ClCompile Include="mappers\Mapper_Vrc7.cpp" />
     <ClCompile Include="mappers\Nes_Vrc7.cpp" />
     <ClCompile Include="mappers\register.cpp" />
+    <ClCompile Include="ZapFC\database.cpp" />
+    <ClCompile Include="ZapFC\sha2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="display\display.h" />
@@ -301,6 +303,8 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="std_file_u.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="ZapFC\database.h" />
+    <ClInclude Include="ZapFC\sha2.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="res\hourglass.ico" />
@@ -311,12 +315,15 @@
     <ResourceCompile Include="Nes_Emu.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\File_Extractor\win32\File_Extractor\File_Extractor.vcxproj">
+      <Project>{e7dd9fb8-a045-42a3-a25a-37a96b1421ae}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\foobar\zlib\zlib.vcxproj">
+      <Project>{b91fdb47-3784-46cc-b23f-e863b60e87d4}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\Nes_Emu-0.7.0b1\win32\lib.vcxproj">
       <Project>{663fb33a-7e53-42b7-a33c-6737e3a0ef02}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
-    <ProjectReference Include="..\..\zlib\win32\zlib\zlib.vcxproj">
-      <Project>{fbf00162-1b31-4cd0-9f78-3ada304e325f}</Project>
     </ProjectReference>
     <ProjectReference Include="..\nes_ntsc\nes_ntsc.vcxproj">
       <Project>{0a834b63-1293-4bd8-9f5a-87ea938eb563}</Project>

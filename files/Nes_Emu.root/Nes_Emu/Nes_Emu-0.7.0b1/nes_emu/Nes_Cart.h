@@ -21,6 +21,10 @@ public:
 	
 	// Load iNES file and apply IPS patch
 	blargg_err_t load_patched_ines( Auto_File_Reader, Auto_File_Reader ips_patch );
+
+	// Apply IPS patches to specific parts
+	blargg_err_t apply_ips_to_prg( Auto_File_Reader ips_patch );
+	blargg_err_t apply_ips_to_chr( Auto_File_Reader ips_patch );
 	
 	// to do: support UNIF?
 	

@@ -128,7 +128,7 @@ void Nes_Core::save_state( Nes_State_* out ) const
 
 void Nes_Core::save_state( Nes_State* out ) const
 {
-	save_state( STATIC_CAST(Nes_State_*,out) );
+	save_state( reinterpret_cast<Nes_State_*>(out) );
 }
 
 void Nes_Core::load_state( Nes_State_ const& in )

@@ -7,11 +7,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lib", "..\..\Nes_Emu-0.7.0b
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nes_ntsc", "..\nes_ntsc\nes_ntsc.vcxproj", "{0A834B63-1293-4BD8-9F5A-87EA938EB563}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zlib", "..\..\zlib\win32\zlib\zlib.vcxproj", "{FBF00162-1B31-4CD0-9F78-3ADA304E325F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "File_Extractor", "..\..\File_Extractor\win32\File_Extractor\File_Extractor.vcxproj", "{E7DD9FB8-A045-42A3-A25A-37A96B1421AE}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zlib", "..\..\foobar\zlib\zlib.vcxproj", "{B91FDB47-3784-46CC-B23F-E863B60E87D4}"
 EndProject
 Global
 	GlobalSection(TeamFoundationVersionControl) = preSolution
-		SccNumberOfProjects = 5
+		SccNumberOfProjects = 6
 		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
 		SccTeamFoundationServer = http://sabin:8080/tfs/defaultcollection
 		SccLocalPath0 = .
@@ -23,9 +25,12 @@ Global
 		SccProjectUniqueName3 = ..\\nes_ntsc\\nes_ntsc.vcxproj
 		SccProjectName3 = ../nes_ntsc
 		SccLocalPath3 = ..\\nes_ntsc
-		SccProjectUniqueName4 = ..\\..\\zlib\\win32\\zlib\\zlib.vcxproj
-		SccProjectName4 = ../../../../../../foobar2000/files/plugins.root/plugins/zlib/win32/zlib
-		SccLocalPath4 = ..\\..\\zlib\\win32\\zlib
+		SccProjectUniqueName4 = ..\\..\\File_Extractor\\win32\\File_Extractor\\File_Extractor.vcxproj
+		SccProjectName4 = ../../../../../../foobar2000/files/plugins.root/plugins/File_Extractor/win32/File_Extractor
+		SccLocalPath4 = ..\\..\\File_Extractor\\win32\\File_Extractor
+		SccProjectUniqueName5 = ..\\..\\foobar\\zlib\\zlib.vcxproj
+		SccProjectName5 = ../../../../../../foobar2000/files/plugins.root/plugins/foobar/zlib
+		SccLocalPath5 = ..\\..\\foobar\\zlib
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -58,14 +63,18 @@ Global
 		{0A834B63-1293-4BD8-9F5A-87EA938EB563}.Release|Win32.Build.0 = Release|Win32
 		{0A834B63-1293-4BD8-9F5A-87EA938EB563}.Release|x64.ActiveCfg = Release|x64
 		{0A834B63-1293-4BD8-9F5A-87EA938EB563}.Release|x64.Build.0 = Release|x64
-		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Debug|Win32.ActiveCfg = Debug staticlink|Win32
-		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Debug|Win32.Build.0 = Debug staticlink|Win32
-		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Debug|x64.ActiveCfg = Debug|x64
-		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Debug|x64.Build.0 = Debug|x64
-		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Release|Win32.ActiveCfg = Release staticlink|Win32
-		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Release|Win32.Build.0 = Release staticlink|Win32
-		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Release|x64.ActiveCfg = Release|x64
-		{FBF00162-1B31-4CD0-9F78-3ADA304E325F}.Release|x64.Build.0 = Release|x64
+		{E7DD9FB8-A045-42A3-A25A-37A96B1421AE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E7DD9FB8-A045-42A3-A25A-37A96B1421AE}.Debug|Win32.Build.0 = Debug|Win32
+		{E7DD9FB8-A045-42A3-A25A-37A96B1421AE}.Debug|x64.ActiveCfg = Debug|Win32
+		{E7DD9FB8-A045-42A3-A25A-37A96B1421AE}.Release|Win32.ActiveCfg = Release|Win32
+		{E7DD9FB8-A045-42A3-A25A-37A96B1421AE}.Release|Win32.Build.0 = Release|Win32
+		{E7DD9FB8-A045-42A3-A25A-37A96B1421AE}.Release|x64.ActiveCfg = Release|Win32
+		{B91FDB47-3784-46CC-B23F-E863B60E87D4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{B91FDB47-3784-46CC-B23F-E863B60E87D4}.Debug|Win32.Build.0 = Debug|Win32
+		{B91FDB47-3784-46CC-B23F-E863B60E87D4}.Debug|x64.ActiveCfg = Debug|Win32
+		{B91FDB47-3784-46CC-B23F-E863B60E87D4}.Release|Win32.ActiveCfg = Release|Win32
+		{B91FDB47-3784-46CC-B23F-E863B60E87D4}.Release|Win32.Build.0 = Release|Win32
+		{B91FDB47-3784-46CC-B23F-E863B60E87D4}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

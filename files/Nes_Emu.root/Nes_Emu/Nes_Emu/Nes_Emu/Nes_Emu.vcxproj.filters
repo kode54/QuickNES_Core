@@ -34,6 +34,9 @@
       <UniqueIdentifier>{7eb70036-88f2-4443-929a-bade6e4d6e56}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;jpg;jpeg;jpe;manifest</Extensions>
     </Filter>
+    <Filter Include="ZapFC">
+      <UniqueIdentifier>{8c8e79ef-877a-498e-9320-2d972ed0f4d5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Nes_Emu.cpp">
@@ -114,6 +117,12 @@
     <ClCompile Include="guids.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ZapFC\database.cpp">
+      <Filter>ZapFC</Filter>
+    </ClCompile>
+    <ClCompile Include="ZapFC\sha2.cpp">
+      <Filter>ZapFC</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="display\display.h">
@@ -181,6 +190,12 @@
     </ClInclude>
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ZapFC\database.h">
+      <Filter>ZapFC</Filter>
+    </ClInclude>
+    <ClInclude Include="ZapFC\sha2.h">
+      <Filter>ZapFC</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

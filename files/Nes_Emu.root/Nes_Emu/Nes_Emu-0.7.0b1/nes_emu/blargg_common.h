@@ -109,14 +109,48 @@
 	#endif
 #endif
 
-// STATIC_CAST(T,expr): Used in place of static_cast<T> (expr)
-#ifndef STATIC_CAST
-	#define STATIC_CAST(T,expr) ((T) (expr))
-#endif
+// In case compiler doesn't support these properly. Used rarely.
+#define STATIC_CAST(T,expr) static_cast<T> (expr)
+#define CONST_CAST( T,expr) const_cast<T> (expr)
 
 // blargg_err_t (0 on success, otherwise error string)
 #ifndef blargg_err_t
 	typedef const char* blargg_err_t;
+#endif
+
+// Success; no error
+int const blargg_ok = 0;
+
+/* Pure virtual functions cause a vtable entry to a "called pure virtual"
+error handler, requiring linkage to the C++ runtime library. This macro is
+used in place of the "= 0", and simply expands to its argument. During
+development, it expands to "= 0", allowing detection of missing overrides. */
+#define BLARGG_PURE( def ) def
+
+/* My code is not written with exceptions in mind, so either uses new (nothrow)
+OR overrides operator new in my classes. The former is best since clients
+creating objects will get standard exceptions on failure, but that causes it
+to require the standard C++ library. So, when the client is using the C
+interface, I override operator new to use malloc. */
+
+// BLARGG_DISABLE_NOTHROW is put inside classes
+#ifndef BLARGG_DISABLE_NOTHROW
+	// throw spec mandatory in ISO C++ if NULL can be returned
+	#if __cplusplus >= 199711 || __GNUC__ >= 3 || _MSC_VER >= 1300
+		#define BLARGG_THROWS_NOTHING throw ()
+	#else
+		#define BLARGG_THROWS_NOTHING
+	#endif
+
+	#define BLARGG_DISABLE_NOTHROW \
+		void* operator new ( size_t s ) BLARGG_THROWS_NOTHING { return malloc( s ); }\
+		void operator delete( void* p ) BLARGG_THROWS_NOTHING { free( p ); }
+
+	#define BLARGG_NEW new
+#else
+	// BLARGG_NEW is used in place of new in library code
+	#include <new>
+	#define BLARGG_NEW new (std::nothrow)
 #endif
 
 #endif

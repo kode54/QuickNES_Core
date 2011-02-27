@@ -221,3 +221,48 @@ blargg_err_t Nes_Cart::load_patched_ines( Auto_File_Reader in, Auto_File_Reader 
 	return err;
 }
 
+blargg_err_t Nes_Cart::apply_ips_to_prg( Auto_File_Reader patch )
+{
+	RETURN_ERR( patch.open() );
+
+	long size = prg_size();
+
+	byte* prg_copy = (byte*) malloc( size );
+	CHECK_ALLOC( prg_copy );
+	memcpy( prg_copy, prg(), size );
+
+	const char* err = apply_ips_patch( *patch, &prg_copy, &size );
+
+	if ( !err )
+	{
+		resize_prg( size );
+		memcpy( prg(), prg_copy, size );
+	}
+
+	free( prg_copy );
+
+	return err;
+}
+
+blargg_err_t Nes_Cart::apply_ips_to_chr( Auto_File_Reader patch )
+{
+	RETURN_ERR( patch.open() );
+
+	long size = chr_size();
+
+	byte* chr_copy = (byte*) malloc( size );
+	CHECK_ALLOC( chr_copy );
+	memcpy( chr_copy, chr(), size );
+
+	const char* err = apply_ips_patch( *patch, &chr_copy, &size );
+
+	if ( !err )
+	{
+		resize_chr( size );
+		memcpy( chr(), chr_copy, size );
+	}
+
+	free( chr_copy );
+
+	return err;
+}
