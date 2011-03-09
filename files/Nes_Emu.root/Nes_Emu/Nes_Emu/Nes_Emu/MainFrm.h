@@ -18,7 +18,7 @@
 
 #include <zlib.h>
 
-static const int sound_buffer_frames = 4;
+static const int sound_buffer_frames = 6;
 
 /*static const int top_clip = 8; // first scanlines not visible on most televisions
 static const int bottom_clip = 4; // last scanlines ^*/

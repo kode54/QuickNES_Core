@@ -66,7 +66,22 @@ Gzip_File_Writer_u::error_t Gzip_File_Writer_u::open( const TCHAR* path, int lev
 {
 	close();
 
-	int fd = _topen( path, _O_WRONLY | _O_CREAT | _O_TRUNC | _O_BINARY, _S_IREAD | _S_IWRITE );
+	const int open_flags = _O_WRONLY | _O_CREAT | _O_TRUNC | _O_BINARY;
+	const int open_permissions = _S_IREAD | _S_IWRITE;
+//	int fd = _topen( path, _O_WRONLY | _O_CREAT | _O_TRUNC | _O_BINARY, _S_IREAD | _S_IWRITE );
+	// XXX BLAH zlib1 needs this handle to be from msvcrt.dll
+	HMODULE hcrt = GetModuleHandle( _T("msvcrt.dll") );
+	typedef int (__cdecl * p_close)(int);
+	p_close func_close = (p_close) GetProcAddress( hcrt, "_close" );
+#ifdef _UNICODE
+	typedef int (__cdecl * p_wopen)(const wchar_t *, int, int);
+	p_wopen func_wopen = (p_wopen) GetProcAddress( hcrt, "_wopen" );
+	int fd = func_wopen( path, open_flags, open_permissions );
+#else
+	typedef int (__cdecl * p_open)(const char *, int, int);
+	p_open func_open = (p_open) GetProcAddress( hcrt, "_open" );
+	int fd = func_open( path, open_flags, open_permissions );
+#endif
 	if ( fd == -1 )
 		return "Couldn't open file for writing";
 	
@@ -76,7 +91,7 @@ Gzip_File_Writer_u::error_t Gzip_File_Writer_u::open( const TCHAR* path, int lev
 	file_ = gzdopen( fd, mode );
 	if ( !file_ )
 	{
-		_close( fd );
+		func_close( fd );
 		return "Couldn't open file for writing";
 	}
 	
