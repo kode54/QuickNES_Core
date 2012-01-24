@@ -18,7 +18,9 @@
 
 #include <zlib.h>
 
-static const int sound_buffer_frames = 6;
+static int sound_buffer_frames;
+static const int sound_buffer_frames_ds = 6;
+static const int sound_buffer_frames_xa = 5;
 
 /*static const int top_clip = 8; // first scanlines not visible on most televisions
 static const int bottom_clip = 4; // last scanlines ^*/
@@ -225,6 +227,8 @@ class CMainFrame : public CFrameWindowImpl<CMainFrame>, public CUpdateUI<CMainFr
 
 	input * m_controls;
 
+	bool             sound_buffering;
+
 	signed short   * sound_buf;
 	unsigned         sound_buf_size;
 
@@ -354,8 +358,14 @@ public:
 				//sound_buf_size = sound_config.sample_rate / ( m_emu.frame_rate / 2 ) * 2;
 				sound_buf_size = sound_config.sample_rate / m_emu.frame_rate * ( sound_config.effects_enabled ? 2 : 1 );
 
-				m_audio = create_sound_out_ds();
-				err = m_audio->open( m_hWnd, sound_config.sample_rate, sound_config.effects_enabled ? 2 : 1, sound_buf_size, sound_buffer_frames );
+				m_audio = create_sound_out_xaudio2();
+				err = m_audio->open( m_hWnd, sound_config.sample_rate, sound_config.effects_enabled ? 2 : 1, sound_buf_size, sound_buffer_frames = sound_buffer_frames_xa );
+				if ( err )
+				{
+					delete m_audio;
+					m_audio = create_sound_out_ds();
+					err = m_audio->open( m_hWnd, sound_config.sample_rate, sound_config.effects_enabled ? 2 : 1, sound_buf_size, sound_buffer_frames = sound_buffer_frames_ds );
+				}
 				if ( ! err )
 				{
 					if ( sound_config.effects_enabled ) err = m_emu.set_sample_rate( sound_config.sample_rate, &m_effects_buffer );
@@ -376,6 +386,8 @@ public:
 				}
 
 				sound_buf = new short[ sound_buf_size ];
+
+				sound_buffering = true;
 			}
 
 			unsigned input_now = 0;
@@ -474,7 +486,11 @@ public:
 						stop_error( err );
 						return;
 					}
+					unsigned buffered = m_audio->buffered();
+					if ( buffered <= 1 ) sound_buffering = true;
+					else if ( sound_buffering && buffered == sound_buffer_frames ) sound_buffering = false;
 				}
+				else sound_buffering = false;
 
 				/*RECT rect;
 
@@ -491,10 +507,7 @@ public:
 
 				bool wait_for_vsync = !! display_config.vsync;
 
-				/*if ( m_audio && m_audio->buffered() < ( sound_buffer_frames - 1 ) )
-					wait_for_vsync = false;*/
-
-				m_video->paint( /*rect,*/ wait_for_vsync );
+				if ( !sound_buffering ) m_video->paint( /*rect,*/ wait_for_vsync );
 			}
 
 			if ( ! emu_seeking )

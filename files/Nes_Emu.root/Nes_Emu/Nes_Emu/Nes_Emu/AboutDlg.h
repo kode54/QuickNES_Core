@@ -60,7 +60,7 @@ public:
 		}
 
 		CString timestamp;
-		timestamp = CString( _T( "Built: " ) ) + _T( __DATE__ ) + _T( ' ' ) + _T( __TIME__ ) + _T( " -0700" );
+		timestamp = CString( _T( "Built: " ) ) + _T( __DATE__ ) + _T( ' ' ) + _T( __TIME__ ) + _T( " -0800" );
 		SetDlgItemText( IDC_BUILD_TIME, timestamp );
 
 		return TRUE;

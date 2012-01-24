@@ -250,6 +250,7 @@
     <ClCompile Include="display\display_d3d9.cpp" />
     <ClCompile Include="guids.cpp" />
     <ClCompile Include="Nes_Emu.cpp" />
+    <ClCompile Include="sound\sound_out_xaudio2.cpp" />
     <ClCompile Include="std_file_u.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

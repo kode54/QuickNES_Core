@@ -17,5 +17,6 @@ public:
 
 sound_out * create_sound_out();
 sound_out * create_sound_out_ds();
+sound_out * create_sound_out_xaudio2();
 
 #endif

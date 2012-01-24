@@ -123,6 +123,9 @@
     <ClCompile Include="ZapFC\sha2.cpp">
       <Filter>ZapFC</Filter>
     </ClCompile>
+    <ClCompile Include="sound\sound_out_xaudio2.cpp">
+      <Filter>Source Files\sound</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="display\display.h">

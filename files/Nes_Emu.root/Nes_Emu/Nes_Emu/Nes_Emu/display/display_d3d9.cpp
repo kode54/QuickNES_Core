@@ -41,6 +41,8 @@ class display_i_d3d9 : public display
 	unsigned                input_width, input_height;
 	unsigned                surface_width, surface_height;
 
+	unsigned                retry_count;
+
 	struct d3dvertex
 	{
 		float x, y, z, rhw;  //screen coords
@@ -54,8 +56,6 @@ class display_i_d3d9 : public display
 		unsigned lock;
 	} flags;
 
-	bool lost;
-
 public:
 	display_i_d3d9()
 	{
@@ -67,7 +67,7 @@ public:
 		lptex = 0;
 		lpsurface = 0;
 
-		lost = false;
+		retry_count = 0;
 	}
 
 	virtual ~display_i_d3d9()
@@ -155,6 +155,8 @@ public:
 
 		clear();
 
+		retry_count = 0;
+
 		return 0;
 	}
 
@@ -171,7 +173,7 @@ public:
 			{
 				dpp.BackBufferWidth = width;
 				dpp.BackBufferHeight = height;
-				lost = true;
+				retry_count = 1;
 				restore_objects();
 				update_filtering( 1 );
 			}
@@ -180,7 +182,7 @@ public:
 
 	virtual const char* lock_framebuffer( void *& buffer, unsigned & pitch )
 	{
-		if ( lost && !restore_objects() ) return "Lock failed";
+		if ( retry_count && !restore_objects() ) return "Lock failed";
 
 		lptex->GetLevelDesc(0, &d3dsd);
 		if ( lptex->GetSurfaceLevel(0, &lpsurface) != D3D_OK )
@@ -208,12 +210,12 @@ public:
 		if ( dpp.PresentationInterval != ( wait ? D3DPRESENT_INTERVAL_DEFAULT : D3DPRESENT_INTERVAL_IMMEDIATE ) )
 		{
 			dpp.PresentationInterval = wait ? D3DPRESENT_INTERVAL_DEFAULT : D3DPRESENT_INTERVAL_IMMEDIATE;
-			lost = true;
+			retry_count = 1;
 			restore_objects();
 			update_filtering( 1 );
 		}
 
-		if ( lost && !restore_objects() ) return "Surface lost";
+		if ( retry_count && !restore_objects() ) return "Surface lost";
 
 		repaint();
 
@@ -222,7 +224,7 @@ public:
 
 	virtual void repaint()
 	{
-		if ( lost && restore_objects() ) return;
+		if ( retry_count && !restore_objects() ) return;
 
 		lpdev->Clear( 0L, NULL, D3DCLEAR_TARGET, 0x000000ff, 1.0f, 0L );
 
@@ -235,16 +237,16 @@ public:
 			lpdev->DrawPrimitive( D3DPT_TRIANGLESTRIP, 0, 2 );
 			lpdev->EndScene();
 
-			if ( lpdev->Present( NULL, NULL, NULL, NULL ) == D3DERR_DEVICELOST ) lost = true;
+			if ( lpdev->Present( NULL, NULL, NULL, NULL ) == D3DERR_DEVICELOST ) retry_count = 60;
 		}
-		else lost = true;
+		else retry_count = 60;
 
 		ValidateRect( hWnd, & rcWindow );
 	}
 
 	virtual void clear()
 	{
-		if ( lost && !restore_objects() ) return;
+		if ( retry_count && !restore_objects() ) return;
 
 		lptex->GetLevelDesc(0, &d3dsd);
 		lptex->GetSurfaceLevel(0, &lpsurface);
@@ -316,13 +318,15 @@ private:
 
 	bool restore_objects()
 	{
-		if ( lost )
+		if ( retry_count )
 		{
+			if ( --retry_count ) return false;
+
 			release_objects();
 			if ( lpdev->Reset( &dpp ) != D3D_OK ) return false;
 		}
 
-		lost = false;
+		retry_count = 0;
 
 		LPDIRECT3DSURFACE9 lpbb;
 		HRESULT hr;
