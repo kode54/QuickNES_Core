@@ -31,6 +31,8 @@ public:
 
 	virtual void set_speed( int ) = 0;
 
+	virtual void set_paused( bool ) = 0;
+
 	virtual void reset() = 0;
 
 	virtual void set_focus( bool is_focused ) = 0;

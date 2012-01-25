@@ -39,7 +39,12 @@ public:
 		bind_forward_analog,
 
 		bind_joy_0_rapid,
-		bind_joy_1_rapid
+		bind_joy_1_rapid,
+
+		bind_pause_toggle,
+		bind_pause_hold,
+
+		bind_frame_advance
 	};
 
 	virtual ~bind_list() {}
@@ -73,7 +78,11 @@ public:
 
 	virtual void set_speed( int ) = 0;
 
+	virtual void set_paused( bool ) = 0;
+
 	virtual void reset() = 0;
+
+	virtual void update() = 0;
 };
 
 bind_list * create_bind_list( guid_container * );

@@ -135,6 +135,7 @@ public:
 	virtual void poll()
 	{
 		bl->process( di->read() );
+		bl->update();
 	}
 
 	virtual unsigned read()
@@ -170,6 +171,11 @@ public:
 	virtual void set_speed( int speed )
 	{
 		bl->set_speed( speed );
+	}
+
+	virtual void set_paused( bool paused )
+	{
+		bl->set_paused( paused );
 	}
 
 	virtual void set_focus( bool is_focused )

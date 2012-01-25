@@ -17,7 +17,7 @@ static const TCHAR * item_roots[] = { _T( "Pad 1" ), _T( "Pad 2" ), _T( "Command
 
 static const TCHAR * item_pad[] = { _T( "A" ), _T( "B" ), _T( "Select" ), _T( "Start" ), _T( "Up" ), _T( "Down" ), _T( "Left" ), _T( "Right" ) };
 
-static const TCHAR * item_command[] = { _T( "Rewind (toggle)" ), _T( "Rewind (hold)" ), _T( "Rewind (analog hold)" ), _T( "Fast forward (toggle)" ), _T( "Fast forward (hold)" ), _T( "Fast forward (analog hold)" ), _T( "Toggle pad 1 rapid fire" ), _T( "Toggle pad 2 rapid fire" ) };
+static const TCHAR * item_command[] = { _T( "Rewind (toggle)" ), _T( "Rewind (hold)" ), _T( "Rewind (analog hold)" ), _T( "Fast forward (toggle)" ), _T( "Fast forward (hold)" ), _T( "Fast forward (analog hold)" ), _T( "Toggle pad 1 rapid fire" ), _T( "Toggle pad 2 rapid fire" ), _T( "Pause emulation (toggle)" ), _T( "Pause emulation (hold)" ), _T( "Frame advance" ) };
 
 class input_config
 {
@@ -183,7 +183,7 @@ public:
 					tvi.hParent = item;
 					tvi.hInsertAfter = TVI_LAST;
 
-					for ( unsigned i = 0; i < 8; ++i )
+					for ( unsigned i = 0; i < _countof( item_command ); ++i )
 					{
 						tvi.item.pszText = ( TCHAR * ) item_command[ i ];
 
@@ -484,7 +484,7 @@ private:
 
 				str += item_pad[ action & 7 ];
 			}
-			else if ( action >= 16 && action <= 23 ) str = item_command[ action - 16 ];
+			else if ( action >= 16 && action <= 26 ) str = item_command[ action - 16 ];
 
 			lvi.iSubItem = 1;
 			lvi.pszText = ( TCHAR * ) str.c_str();

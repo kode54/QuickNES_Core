@@ -16,6 +16,10 @@ class bind_list_i : public bind_list
 
 	int speed;
 
+	bool paused;
+
+	int frames_until_paused;
+
 	bool rapid_enable[2];
 
 	Joypad_Filter filter[2];
@@ -80,6 +84,11 @@ class bind_list_i : public bind_list
 		else if ( which == bind_joy_0_rapid ) rapid_enable[ 0 ] = ! rapid_enable[ 0 ];
 
 		else if ( which == bind_joy_1_rapid ) rapid_enable[ 1 ] = ! rapid_enable[ 1 ];
+
+		else if ( which == bind_pause_toggle ) paused = ! paused;
+		else if ( which == bind_pause_hold ) paused = true;
+
+		else if ( which == bind_frame_advance ) { paused = false; frames_until_paused = 2; }
 	}
 
 	void release( unsigned which, unsigned value )
@@ -103,6 +112,8 @@ class bind_list_i : public bind_list
 			speed = 10 * ( ( int ) value ) / 65535;
 			if ( speed < 1 ) speed = 1;
 		}
+
+		else if ( which == bind_pause_hold ) paused = false;
 	}
 
 public:
@@ -498,14 +509,24 @@ public:
 		filter[ joy ].clock_turbo();
 	}
 
+	virtual void update()
+	{
+		if ( frames_until_paused && !--frames_until_paused ) paused = true;
+	}
+
 	virtual int get_speed() const
 	{
-		return speed;
+		return paused ? 0 : speed;
 	}
 
 	virtual void set_speed( int speed )
 	{
 		this->speed = speed;
+	}
+
+	virtual void set_paused( bool paused )
+	{
+		this->paused = paused;
 	}
 
 	virtual void reset()
@@ -514,6 +535,10 @@ public:
 		joy[ 1 ] = 0;
 
 		speed = 1;
+
+		paused = false;
+
+		frames_until_paused = 0;
 
 		rapid_enable[ 0 ] = false;
 		rapid_enable[ 1 ] = false;

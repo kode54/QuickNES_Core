@@ -225,6 +225,8 @@ class CMainFrame : public CFrameWindowImpl<CMainFrame>, public CUpdateUI<CMainFr
 
 	sound_out * m_audio;
 
+	bool skip_input_polling;
+
 	input * m_controls;
 
 	bool             sound_buffering;
@@ -345,6 +347,30 @@ public:
 		m_effects_buffer.config( cfg );
 	}
 
+	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+	{
+		if ( emu_state == emu_paused )
+		{
+			if ( m_controls )
+			{
+				m_controls->poll();
+
+				emu_speed = m_controls->get_speed();
+
+				if ( emu_speed )
+				{
+					BOOL unused;
+					OnCorePause(0, 0, 0, unused);
+				}
+
+				skip_input_polling = true;
+			}
+		}
+		else KillTimer( 0 );
+
+		return 0;
+	}
+
 	void DoFrame()
 	{
 		if ( emu_state == emu_running )
@@ -394,7 +420,8 @@ public:
 
 			if ( m_controls )
 			{
-				m_controls->poll();
+				if ( !skip_input_polling ) m_controls->poll();
+				skip_input_polling = false;
 
 				emu_speed = m_controls->get_speed();
 
@@ -411,8 +438,10 @@ public:
 					input_last = input_now;
 				}
 
-				if ( emu_speed < 0 && m_emu.tell() <= m_emu.film().begin() )
+				if ( emu_speed == 0 || ( emu_speed < 0 && m_emu.tell() <= m_emu.film().begin() ) )
 				{
+					BOOL unused;
+					OnCorePause(0, 0, 0, unused);
 					set_status( IDS_PAUSED );
 					return;
 				}
@@ -420,7 +449,7 @@ public:
 
 			if ( m_video )
 			{
-				if ( !core_config.record_indefinitely )
+				if ( !core_config.record_indefinitely && !m_film.blank() )
 				{
 					long begin = m_film.constrain( m_film.end() - 5 * 60 * m_emu.frame_rate );
 					if ( emu_speed < 0 && m_emu.tell() <= begin )
@@ -461,20 +490,11 @@ public:
 
 					dir += ( dir < 0 ? 1 : -1 );
 
-					if ( m_controls )
+					if ( m_controls && dir )
 					{
 						m_controls->poll();
 						input_now = m_controls->read();
 					}
-				}
-
-				void * fb;
-				unsigned pitch;
-				err = m_video->lock_framebuffer( fb, pitch );
-				if ( ! err )
-				{
-					m_blitter.blit( m_emu, fb, pitch );
-					m_video->unlock_framebuffer();
 				}
 
 				if ( m_audio && ! emu_seeking )
@@ -492,22 +512,34 @@ public:
 				}
 				else sound_buffering = false;
 
-				/*RECT rect;
-
+				if ( !sound_buffering )
 				{
+					void * fb;
+					unsigned pitch;
+					err = m_video->lock_framebuffer( fb, pitch );
+					if ( ! err )
+					{
+						m_blitter.blit( m_emu, fb, pitch );
+						m_video->unlock_framebuffer();
+					}
+
+					/*RECT rect;
+
+					{
 					const Nes_Emu::frame_t & frame = m_emu.frame();
 					m_video->update_palette( ( const unsigned char * ) & nes_palette, frame.palette, frame.palette_begin, frame.palette_size );
 
 					rect.left = frame.left;
 					rect.top = frame.top + top_clip;
+					}
+
+					rect.right = rect.left + m_emu.image_width;
+					rect.bottom = rect.top + m_emu.image_height - top_clip - bottom_clip;*/
+
+					bool wait_for_vsync = !! display_config.vsync;
+
+					m_video->paint( /*rect,*/ wait_for_vsync );
 				}
-
-				rect.right = rect.left + m_emu.image_width;
-				rect.bottom = rect.top + m_emu.image_height - top_clip - bottom_clip;*/
-
-				bool wait_for_vsync = !! display_config.vsync;
-
-				if ( !sound_buffering ) m_video->paint( /*rect,*/ wait_for_vsync );
 			}
 
 			if ( ! emu_seeking )
@@ -522,7 +554,12 @@ public:
 
 			if ( emu_step )
 			{
-				if ( --emu_step == 0 ) emu_state = emu_paused;
+				if ( --emu_step == 0 )
+				{
+					emu_state = emu_paused;
+					if ( m_controls ) m_controls->set_paused( true );
+					SetTimer( 0, 10 );
+				}
 			}
 		}
 	}
@@ -545,6 +582,7 @@ public:
 	BEGIN_MSG_MAP(CMainFrame)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		//MESSAGE_HANDLER(WM_SIZING, OnSizing)
+		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		MESSAGE_HANDLER(WM_MOVE, OnMove)
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
 		MESSAGE_HANDLER(WM_KILLFOCUS, OnKillFocus)
@@ -1101,6 +1139,7 @@ public:
 
 			m_emu.close();
 			m_cart.clear();
+			m_film.clear( 30 * m_emu.frame_rate );
 
 			bool is_ines = false;
 			bool is_zapfc = false;
@@ -1453,6 +1492,7 @@ public:
 			if ( ! err )
 			{
 				emu_state = emu_running;
+				skip_input_polling = false;
 				sram_load();
 			}
 
@@ -1859,6 +1899,7 @@ public:
 			emu_state = emu_running;
 			emu_seeking = false;
 			emu_was_paused = false;
+			skip_input_polling = false;
 			m_emu.reset();
 			bookmarks.reset();
 			//m_TrackBar.ClearTics( TRUE );
@@ -1887,6 +1928,8 @@ public:
 			{
 				emu_state = ( emu_state == emu_running ) ? emu_paused : emu_running;
 				UISetCheck( ID_CORE_PAUSE, emu_state == emu_paused );
+				if ( m_controls ) m_controls->set_paused( emu_state == emu_paused );
+				if ( emu_state == emu_paused ) SetTimer( 0, 10 );
 			}
 
 			if ( m_audio ) m_audio->pause( emu_state == emu_paused );
@@ -1901,6 +1944,7 @@ public:
 		{
 			++emu_step;
 			emu_state = emu_running;
+			if ( m_controls ) m_controls->set_paused( false );
 		}
 
 		return 0;
