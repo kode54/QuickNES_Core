@@ -441,7 +441,7 @@ public:
 				if ( emu_speed == 0 || ( emu_speed < 0 && m_emu.tell() <= m_emu.film().begin() ) )
 				{
 					BOOL unused;
-					OnCorePause(0, 0, 0, unused);
+					if ( emu_speed == 0 ) OnCorePause(0, 0, 0, unused);
 					set_status( IDS_PAUSED );
 					return;
 				}

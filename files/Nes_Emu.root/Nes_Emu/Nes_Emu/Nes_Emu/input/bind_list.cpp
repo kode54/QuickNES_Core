@@ -19,6 +19,7 @@ class bind_list_i : public bind_list
 	bool paused;
 
 	int frames_until_paused;
+	int frames_until_run;
 
 	bool rapid_enable[2];
 
@@ -89,6 +90,7 @@ class bind_list_i : public bind_list
 		else if ( which == bind_pause_hold ) paused = true;
 
 		else if ( which == bind_frame_advance ) { paused = false; frames_until_paused = 2; }
+		else if ( which == bind_frame_advance_hold ) { paused = true; frames_until_run = 8; }
 	}
 
 	void release( unsigned which, unsigned value )
@@ -114,6 +116,8 @@ class bind_list_i : public bind_list
 		}
 
 		else if ( which == bind_pause_hold ) paused = false;
+
+		else if ( which == bind_frame_advance_hold ) { paused = false; frames_until_paused = 2; frames_until_run = 0; }
 	}
 
 public:
@@ -512,6 +516,7 @@ public:
 	virtual void update()
 	{
 		if ( frames_until_paused && !--frames_until_paused ) paused = true;
+		if ( frames_until_run && !--frames_until_run ) paused = false;
 	}
 
 	virtual int get_speed() const
@@ -539,6 +544,7 @@ public:
 		paused = false;
 
 		frames_until_paused = 0;
+		frames_until_run = 0;
 
 		rapid_enable[ 0 ] = false;
 		rapid_enable[ 1 ] = false;

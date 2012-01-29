@@ -44,7 +44,8 @@ public:
 		bind_pause_toggle,
 		bind_pause_hold,
 
-		bind_frame_advance
+		bind_frame_advance,
+		bind_frame_advance_hold
 	};
 
 	virtual ~bind_list() {}
