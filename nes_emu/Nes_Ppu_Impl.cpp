@@ -192,6 +192,9 @@ void Nes_Ppu_Impl::reset( bool full_reset )
 	w2001 = 0;
 	r2002 = 0x80;
 	r2007 = 0;
+	open_bus = 0;
+	decay_low = 0;
+	decay_high = 0;
 	second_write = false;
 	vram_temp = 0;
 	pixel_x = 0;

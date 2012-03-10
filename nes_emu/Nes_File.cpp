@@ -138,6 +138,7 @@ blargg_err_t Nes_File_Reader::read_header()
 		block_type_ = group_end;
 		h.tag = 0;
 	}
+	set_remain( h.size );
 	return 0;
 }
 
@@ -204,21 +205,22 @@ blargg_err_t Nes_File_Reader::exit_group()
 	return 0;
 }
 
-Nes_File_Reader::error_t Nes_File_Reader::skip( long s )
+blargg_err_t Nes_File_Reader::skip_v( int s )
 {
 	require( block_type() == data_block );
 	if ( (unsigned long) s > h.size )
 		return "Tried to skip past end of data";
 	h.size -= s;
+	set_remain( h.size );
 	return in->skip( s );
 }
 
-long Nes_File_Reader::read_avail( void* p, long s )
+blargg_err_t Nes_File_Reader::read_v( void* p, int n )
 {
 	require( block_type() == data_block );
-	if ( (unsigned long) s > h.size )
-		s = h.size;
-	h.size -= s;
-	return in->read_avail( p, s );
+	if ( (unsigned long) n > h.size )
+		n = h.size;
+	h.size -= n;
+	set_remain( h.size );
+	return in->read( p, n );
 }
-

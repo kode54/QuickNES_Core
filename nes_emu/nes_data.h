@@ -11,12 +11,25 @@
 
 typedef long nes_tag_t;
 
+#if 'ABCD' == '\101\102\103\104'
 #define FOUR_CHAR( c ) (\
 	((c) / '\1\0\0\0' % 0x100 * 0x01000000L) +\
 	((c) / '\0\1\0\0' % 0x100 * 0x00010000L) +\
 	((c) / '\0\0\1\0' % 0x100 * 0x00000100L) +\
 	((c) / '\0\0\0\1' % 0x100 * 0x00000001L)\
 )
+#else
+#if 'ABCD' == 0x41424344
+#define FOUR_CHAR( c ) c
+#else
+#define FOUR_CHAR( c ) (\
+	((c) / 0x01000000 % 0x100 * 0x00000001) +\
+	((c) / 0x00010000 % 0x100 * 0x00000100) +\
+	((c) / 0x00000100 % 0x100 * 0x00010000) +\
+	((c) / 0x00000001 % 0x100 * 0x01000000)\
+)
+#endif
+#endif
 
 typedef BOOST::uint8_t byte;
 
@@ -126,11 +139,15 @@ struct ppu_state_t
 	byte pixel_x;               // fine-scroll (0-7)
 	byte unused;
 	byte palette [0x20];        // entries $10, $14, $18, $1c should be ignored
+	BOOST::uint16_t decay_low;
+	BOOST::uint16_t decay_high;
+	byte open_bus;
+	byte unused2[3];
 	
 	enum { tag = FOUR_CHAR('PPUR') };
 	void swap();
 };
-BOOST_STATIC_ASSERT( sizeof (ppu_state_t) == 12 + 0x20 );
+BOOST_STATIC_ASSERT( sizeof (ppu_state_t) == 20 + 0x20 );
 
 struct mmc1_state_t
 {

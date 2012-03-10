@@ -75,13 +75,10 @@ public:
 	blargg_err_t read_block_data( void*, long s );
 	
 	// Read at most 's' bytes from current block and return number of bytes actually read
-	long read_avail( void*, long s );
+	virtual blargg_err_t read_v( void*, int n );
 	
 	// Skip 's' bytes in current block
-	error_t skip( long s );
-	
-	// Number of bytes remaining in current block
-	long remain() const { return h.size; }
+	virtual blargg_err_t skip_v( int s );
 	
 	// Read first sub-block of current group block
 	blargg_err_t enter_group();

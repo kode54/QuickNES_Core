@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA */
 ppu_time_t const scanline_len = Nes_Ppu::scanline_len;
 
 // if non-zero, report sprite max at fixed time rather than calculating it
-nes_time_t const fixed_sprite_max_time = 1 * ((21 + 164) * scanline_len + 100) / ppu_overclock;
+nes_time_t const fixed_sprite_max_time = 0; // 1 * ((21 + 164) * scanline_len + 100) / ppu_overclock;
 int const sprite_max_cpu_offset = 2420 + 3;
 
 ppu_time_t const t_to_v_time = 20 * scanline_len + 302;
@@ -40,7 +40,7 @@ ppu_time_t const first_scanline_time = 21 * scanline_len + 60; // this can be va
 ppu_time_t const first_hblank_time = 21 * scanline_len + 252;
 
 ppu_time_t const earliest_sprite_max = sprite_max_cpu_offset * ppu_overclock;
-ppu_time_t const earliest_sprite_hit = 21 * scanline_len + 339;
+ppu_time_t const earliest_sprite_hit = 21 * scanline_len + 339; // needs to be 22 * scanline_len when fixed_sprite_max_time is set
 
 nes_time_t const vbl_end_time = 2272;
 ppu_time_t const max_frame_length = 262 * scanline_len;
@@ -325,7 +325,7 @@ int Nes_Ppu::read_2002( nes_time_t time )
 {
 	nes_time_t next = next_status_event;
 	next_status_event = vbl_end_time;
-	int extra_clock = (extra_clocks - 1) >> 2 & 1;
+	int extra_clock = extra_clocks ? (extra_clocks - 1) >> 2 & 1 : 0;
 	if ( time > next && time > vbl_end_time + extra_clock )
 	{
 		query_until( time );
@@ -335,10 +335,17 @@ int Nes_Ppu::read_2002( nes_time_t time )
 				fixed_sprite_max_time : next_sprite_max_run;
 		if ( next_status_event > next_max )
 			next_status_event = next_max;
+
+		if ( time > earliest_open_bus_decay() )
+		{
+			next_status_event = earliest_open_bus_decay();
+			update_open_bus( time );
+		}
 		
 		if ( time > earliest_vbl_end_time )
 		{
-			next_status_event = earliest_vbl_end_time;
+			if ( next_status_event > earliest_vbl_end_time )
+				next_status_event = earliest_vbl_end_time;
 			run_end_frame( time );
 			
 			// special vbl behavior when read is just before or at clock when it's set
@@ -364,7 +371,9 @@ int Nes_Ppu::read_2002( nes_time_t time )
 	int result = r2002;
 	second_write = false;
 	r2002 = result & ~0x80;
-	return result;
+	poke_open_bus( time, result, 0xE0 );
+	update_open_bus( time );
+	return ( result & 0xE0 ) | ( open_bus & 0x1F );
 }
 
 void Nes_Ppu::dma_sprites( nes_time_t time, void const* in )
@@ -393,7 +402,9 @@ inline int Nes_Ppu_Impl::read_2007( int addr )
 	{
 		r2007 = get_nametable( addr ) [addr & 0x3ff];
 		if ( addr >= 0x3f00 )
-			return palette [map_palette( addr )];
+		{
+			return palette [map_palette( addr )] | ( open_bus & 0xC0 );
+		}
 	}
 	return result;
 }
@@ -414,6 +425,7 @@ int Nes_Ppu::read( unsigned addr, nes_time_t time )
 			int result = spr_ram [w2003];
 			if ( (w2003 & 3) == 2 )
 				result &= 0xe3;
+			poke_open_bus( time, result, ~0 );
 			return result;
 		}
 		
@@ -428,15 +440,19 @@ int Nes_Ppu::read( unsigned addr, nes_time_t time )
 				emu.mapper->a12_clocked();
 				addr = vram_addr - addr_inc; // avoid having to save across func call
 			}
-			return read_2007( addr & 0x3fff );
+			int result = read_2007( addr & 0x3fff );
+			poke_open_bus( time, result, ( ( addr & 0x3fff ) >= 0x3f00 ) ? 0x3F : ~0 );
+			return result;
 		}
 		
 		default:
 			dprintf( "Read from unimplemented PPU register 0x%04X\n", addr );
 			break;
 	}
+
+	update_open_bus( time );
 	
-	return addr >> 8 & 0xff;
+	return open_bus;
 }
 
 // Write
@@ -479,6 +495,7 @@ void Nes_Ppu::write( nes_time_t time, unsigned addr, int data )
 				invalidate_sprite_max( time );
 			w2000 = data;
 			addr_inc = data & 4 ? 32 : 1;
+
 			break;
 		}
 		
@@ -506,11 +523,13 @@ void Nes_Ppu::write( nes_time_t time, unsigned addr, int data )
 			
 			if ( changed & 0x08 )
 				emu.irq_changed();
+
 			break;
 		}
 		
 		case 3: // spr addr
 			w2003 = data;
+			poke_open_bus( time, w2003, ~0 );
 			break;
 		
 		case 4:
@@ -557,6 +576,8 @@ void Nes_Ppu::write( nes_time_t time, unsigned addr, int data )
 			dprintf( "Wrote to unimplemented PPU register 0x%04X\n", addr );
 			break;
 	}
+
+	poke_open_bus( time, data, ~0 );
 }
 
 // Frame begin/end
@@ -597,6 +618,9 @@ nes_time_t Nes_Ppu::begin_frame( ppu_time_t timestamp )
 	next_sprite_hit_check = 0;
 	next_sprite_max_scanline = 0;
 	invalidate_sprite_max_();
+
+	decay_low += cpu_timestamp;
+	decay_high += cpu_timestamp;
 	
 	base::begin_frame();
 	
@@ -610,6 +634,10 @@ ppu_time_t Nes_Ppu::end_frame( nes_time_t end_time )
 	render_until( end_time );
 	query_until( end_time );
 	run_end_frame( end_time );
+
+	update_open_bus( end_time );
+	decay_low -= end_time;
+	decay_high -= end_time;
 	
 	// to do: do more PPU RE to get exact behavior
 	if ( w2001 & 0x08 )
@@ -628,3 +656,14 @@ ppu_time_t Nes_Ppu::end_frame( nes_time_t end_time )
 	return (end_time - frame_length_) * ppu_overclock + frame_length_extra;
 }
 
+void Nes_Ppu::poke_open_bus( nes_time_t time, int data, int mask )
+{
+	open_bus = ( open_bus & ~mask ) | ( data & mask );
+	if ( mask & 0x1F ) decay_low = time + scanline_len * 100 / ppu_overclock;
+	if ( mask & 0xE0 ) decay_high = time + scanline_len * 100 / ppu_overclock;
+}
+
+const nes_time_t Nes_Ppu::earliest_open_bus_decay() const
+{
+	return ( decay_low < decay_high ) ? decay_low : decay_high;
+}

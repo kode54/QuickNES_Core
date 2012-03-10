@@ -88,7 +88,12 @@ private:
 	// sprite hit
 	nes_time_t next_sprite_hit_check;
 	void update_sprite_hit( nes_time_t );
-	
+
+	// open bus decay
+	void update_open_bus( nes_time_t );
+	void poke_open_bus( nes_time_t, int, int mask );
+	const nes_time_t earliest_open_bus_decay() const;
+
 	// sprite max
 	nes_time_t next_sprite_max_run; // doesn't need to run until this time
 	nes_time_t sprite_max_set_time; // if 0, needs to be recalculated
@@ -124,6 +129,12 @@ inline void Nes_Ppu::render_bg_until( nes_time_t t )
 {
 	if ( t > next_bg_time )
 		render_bg_until_( t );
+}
+
+inline void Nes_Ppu::update_open_bus( nes_time_t time )
+{
+	if ( time >= decay_low ) open_bus &= ~0x1F;
+	if ( time >= decay_high ) open_bus &= ~0xE0;
 }
 
 #endif

@@ -42,6 +42,8 @@ void ppu_state_t::swap()
 {
 	SWAP_LE( vram_addr );
 	SWAP_LE( vram_temp );
+	SWAP_LE( decay_low );
+	SWAP_LE( decay_high );
 }
 
 void apu_state_t::swap()
