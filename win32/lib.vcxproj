@@ -182,7 +182,7 @@
     <ClCompile Include="..\nes_emu\Nes_Ppu_Impl.cpp" />
     <ClCompile Include="..\nes_emu\Nes_Ppu_Rendering.cpp" />
     <ClCompile Include="..\nes_emu\Nes_Recorder.cpp" />
-    <ClCompile Include="..\nes_emu\nes_state.cpp" />
+    <ClCompile Include="..\nes_emu\Nes_State.cpp" />
     <ClCompile Include="..\nes_emu\nes_util.cpp" />
     <ClCompile Include="..\nes_emu\Nes_Vrc6_Apu.cpp" />
   </ItemGroup>
@@ -221,7 +221,7 @@
     <ClInclude Include="..\nes_emu\Nes_Ppu_Rendering.h" />
     <ClInclude Include="..\nes_emu\Nes_Ppu_Sprites.h" />
     <ClInclude Include="..\nes_emu\Nes_Recorder.h" />
-    <ClInclude Include="..\nes_emu\nes_state.h" />
+    <ClInclude Include="..\nes_emu\Nes_State.h" />
     <ClInclude Include="..\nes_emu\nes_util.h" />
     <ClInclude Include="..\nes_emu\Nes_Vrc6_Apu.h" />
   </ItemGroup>
