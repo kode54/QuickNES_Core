@@ -6,7 +6,7 @@
 
 #undef BLARGG_CONFIG_H
 
-#include "../../File_Extractor/fex/Data_Reader.h"
+#include <fex/Data_Reader.h>
 
 #include <stdio.h>
 

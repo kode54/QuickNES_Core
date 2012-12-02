@@ -288,7 +288,7 @@ Gzip_File_Writer::error_t Gzip_File_Writer::open( const char* path, int level )
 
 Gzip_File_Writer::error_t Gzip_File_Writer::write( const void* p, long s )
 {
-	long result = (long) gzwrite( file_ , (void*) p, s );
+    long result = (long) gzwrite( (gzFile) file_ , (void*) p, s );
 	if ( result != s )
 		return "Couldn't write to file";
 	return 0;
@@ -298,7 +298,7 @@ void Gzip_File_Writer::close()
 {
 	if ( file_ )
 	{
-		gzclose( file_ );
+        gzclose( (gzFile) file_ );
 		file_ = 0;
 	}
 }

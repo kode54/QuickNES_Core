@@ -721,12 +721,12 @@ imm##op:                                \
 		WRITE( data, temp = READ( data ) );
 		nz = (c >> 8) & 1;
 		nz |= (c = temp << 1);
-	rotate_common:
+    }
+    rotate_common:
 		pc++;
 		WRITE( data, (uint8_t) nz );
 		goto loop;
-	}
-	
+
 	case 0x7E: // ROR abs,X
 		data += x;
 		goto ror_abs;

@@ -95,6 +95,13 @@
 	};
 #endif
 
+#ifdef _WIN32
+typedef wchar_t blargg_wchar_t;
+#else
+#include <stdint.h>
+typedef uint16_t blargg_wchar_t;
+#endif
+
 // BOOST_STATIC_ASSERT( expr ): Generates compile error if expr is 0.
 #ifndef BOOST_STATIC_ASSERT
 	#ifdef _MSC_VER
@@ -119,7 +126,7 @@
 #endif
 
 // Success; no error
-int const blargg_ok = 0;
+blargg_err_t const blargg_ok = 0;
 
 /* Pure virtual functions cause a vtable entry to a "called pure virtual"
 error handler, requiring linkage to the C++ runtime library. This macro is

@@ -97,7 +97,7 @@ void Nes_Film_Data::flush_active() const
 		assert( b->size <= packer->worst_case( active_size() - b->offset ) );
 		
 		// shrink allocation
-		void* mem = realloc( b, offsetof (comp_block_t, data [b->size]) );
+        void* mem = realloc( b, offsetof (comp_block_t, data) + b->size * sizeof(b->data[0]) );
 		if ( mem )
 			blocks [active_index] = (comp_block_t*) mem;
 		else
