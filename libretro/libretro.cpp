@@ -98,9 +98,40 @@ void retro_reset(void)
       emu->reset();
 }
 
+#define JOY_A           1
+#define JOY_B           2
+#define JOY_SELECT      4
+#define JOY_START       8
+#define JOY_UP       0x10
+#define JOY_DOWN     0x20
+#define JOY_LEFT     0x40
+#define JOY_RIGHT    0x80
+
+typedef struct
+{
+   unsigned retro;
+   unsigned nes;
+} keymap;
+
+static const keymap bindmap[] = {
+   { RETRO_DEVICE_ID_JOYPAD_A, JOY_A },
+   { RETRO_DEVICE_ID_JOYPAD_B, JOY_B },
+   { RETRO_DEVICE_ID_JOYPAD_SELECT, JOY_SELECT },
+   { RETRO_DEVICE_ID_JOYPAD_START, JOY_START },
+   { RETRO_DEVICE_ID_JOYPAD_UP, JOY_UP },
+   { RETRO_DEVICE_ID_JOYPAD_DOWN, JOY_DOWN },
+   { RETRO_DEVICE_ID_JOYPAD_LEFT, JOY_LEFT },
+   { RETRO_DEVICE_ID_JOYPAD_RIGHT, JOY_RIGHT },
+};
+
 static void update_input(int pads[2])
 {
+   pads[0] = pads[1] = 0;
    input_poll_cb();
+
+   for (unsigned p = 0; p < 2; p++)
+      for (unsigned bind = 0; bind < sizeof(bindmap) / sizeof(bindmap[0]); bind++)
+         pads[p] |= input_state_cb(p, RETRO_DEVICE_JOYPAD, 0, bindmap[bind].retro) ? bindmap[bind].nes : 0;
 }
 
 void retro_run(void)
@@ -125,15 +156,15 @@ void retro_run(void)
       }
    }
 
+   video_cb(video_buffer, Nes_Emu::image_width, Nes_Emu::image_height,
+         Nes_Emu::image_width * sizeof(uint32_t));
+
    int16_t samples[4096];
    long read_samples = emu->read_samples(samples, 4096);
    int16_t out_samples[4096];
    for (long i = 0; i < read_samples; i++)
       out_samples[(i << 1)] = out_samples[(i << 1) + 1] = samples[i];
    audio_batch_cb(out_samples, read_samples);
-
-   video_cb(video_buffer, Nes_Emu::image_width, Nes_Emu::image_height,
-         Nes_Emu::image_width * sizeof(uint32_t));
 }
 
 bool retro_load_game(const struct retro_game_info *info)
