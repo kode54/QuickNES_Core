@@ -3,7 +3,7 @@
 
 #include "Nes_Apu.h"
 
-#include "nes_state.h"
+#include "Nes_State.h"
 
 /* Copyright (C) 2003-2005 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
