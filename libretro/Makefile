@@ -88,11 +88,11 @@ endif
 
 EMU_DIR := ../nes_emu
 
-CXXSRCS := $(EMU_DIR)/Blip_Buffer.cpp \
+CXXSRCS := \
 	$(EMU_DIR)/abstract_file.cpp \
-	$(EMU_DIR)/apu_snapshot.cpp \
+	$(EMU_DIR)/apu_state.cpp \
+	$(EMU_DIR)/Blip_Buffer.cpp \
 	$(EMU_DIR)/Effects_Buffer.cpp \
-	$(EMU_DIR)/Mapper_Fme07.cpp \
 	$(EMU_DIR)/Mapper_Fme7.cpp \
 	$(EMU_DIR)/Mapper_Mmc5.cpp \
 	$(EMU_DIR)/Mapper_Namco106.cpp \
@@ -100,8 +100,6 @@ CXXSRCS := $(EMU_DIR)/Blip_Buffer.cpp \
 	$(EMU_DIR)/misc_mappers.cpp \
 	$(EMU_DIR)/Multi_Buffer.cpp \
 	$(EMU_DIR)/Nes_Apu.cpp \
-	$(EMU_DIR)/Nes_Apu_State.cpp \
-	$(EMU_DIR)/Nes_Blitter.cpp \
 	$(EMU_DIR)/Nes_Buffer.cpp \
 	$(EMU_DIR)/Nes_Cart.cpp \
 	$(EMU_DIR)/Nes_Core.cpp \
@@ -110,34 +108,31 @@ CXXSRCS := $(EMU_DIR)/Blip_Buffer.cpp \
 	$(EMU_DIR)/Nes_Effects_Buffer.cpp \
 	$(EMU_DIR)/Nes_Emu.cpp \
 	$(EMU_DIR)/Nes_File.cpp \
-	$(EMU_DIR)/Nes_Fme07_Apu.cpp \
+	$(EMU_DIR)/Nes_Film.cpp \
+	$(EMU_DIR)/Nes_Film_Data.cpp \
+	$(EMU_DIR)/Nes_Film_Packer.cpp \
 	$(EMU_DIR)/Nes_Fme7_Apu.cpp \
 	$(EMU_DIR)/Nes_Mapper.cpp \
+	$(EMU_DIR)/nes_mappers.cpp \
 	$(EMU_DIR)/Nes_Mmc1.cpp \
 	$(EMU_DIR)/Nes_Mmc3.cpp \
 	$(EMU_DIR)/Nes_Namco_Apu.cpp \
-	$(EMU_DIR)/Nes_Nonlinearizer.cpp \
+	$(EMU_DIR)/nes_ntsc.c \
 	$(EMU_DIR)/Nes_Oscs.cpp \
-	$(EMU_DIR)/Nes_Ppu_Core.cpp \
 	$(EMU_DIR)/Nes_Ppu.cpp \
 	$(EMU_DIR)/Nes_Ppu_Impl.cpp \
 	$(EMU_DIR)/Nes_Ppu_Rendering.cpp \
-	$(EMU_DIR)/Nes_Rom.cpp \
-	$(EMU_DIR)/Nes_Snapshot.cpp \
-	$(EMU_DIR)/nes_state.cpp \
+	$(EMU_DIR)/Nes_Recorder.cpp \
+	$(EMU_DIR)/Nes_State.cpp \
 	$(EMU_DIR)/nes_util.cpp \
 	$(EMU_DIR)/Nes_Vrc6_Apu.cpp \
-	$(EMU_DIR)/Nonlinear_Buffer.cpp \
-	$(EMU_DIR)/Nonlinear_Effects_Buffer.cpp \
-	$(EMU_DIR)/optional_mappers.cpp \
-	$(EMU_DIR)/nes_ntsc.c \
 	libretro.cpp
 
 CXXOBJ := $(CXXSRCS:.cpp=.o)
 
 OBJS := $(CXXOBJ)
 
-DEFINES := -D__LIBRETRO__ $(PLATFORM_DEFINES) -Wall
+DEFINES := -D__LIBRETRO__ $(PLATFORM_DEFINES) -Wall -Wno-multichar
 
 CFLAGS += $(fpic) $(DEFINES) -std=gnu99
 CXXFLAGS += $(fpic) $(DEFINES)
