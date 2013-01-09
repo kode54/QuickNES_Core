@@ -645,6 +645,7 @@ void Std_File_Reader::close()
 
 // Gzip_File_Reader
 
+#ifndef __LIBRETRO__
 #ifdef HAVE_ZLIB_H
 
 #include "zlib.h"
@@ -760,5 +761,6 @@ void Gzip_File_Reader::close()
 		file_ = NULL;
 	}
 }
+#endif
 
 #endif
