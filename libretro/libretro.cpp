@@ -152,18 +152,25 @@ void retro_run(void)
    {
       for (unsigned w = 0; w < Nes_Emu::image_width; w++)
       {
-         out_pixels[w] = in_pixels[w];
+         unsigned col = frame.palette[in_pixels[w]];
+         const Nes_Emu::rgb_t& rgb = emu->nes_colors[col];
+         unsigned r = rgb.red;
+         unsigned g = rgb.green;
+         unsigned b = rgb.blue;
+         out_pixels[w] = (r << 16) | (g << 8) | (b << 0);
       }
    }
 
    video_cb(video_buffer, Nes_Emu::image_width, Nes_Emu::image_height,
          Nes_Emu::image_width * sizeof(uint32_t));
 
-   int16_t samples[4096];
-   long read_samples = emu->read_samples(samples, 4096);
+   // Mono -> Stereo.
+   int16_t samples[2048];
+   long read_samples = emu->read_samples(samples, 2048);
    int16_t out_samples[4096];
    for (long i = 0; i < read_samples; i++)
       out_samples[(i << 1)] = out_samples[(i << 1) + 1] = samples[i];
+
    audio_batch_cb(out_samples, read_samples);
 }
 
