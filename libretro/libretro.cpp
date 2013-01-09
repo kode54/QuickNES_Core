@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include "Nes_Emu.h"
 #include "fex/Data_Reader.h"
+#include "abstract_file.h"
 
 static Nes_Emu *emu;
 
@@ -213,17 +214,23 @@ bool retro_load_game_special(unsigned, const struct retro_game_info *, size_t)
 
 size_t retro_serialize_size(void)
 {
-   return 0;
+   Mem_Writer writer;
+   if (emu->save_state(writer))
+      return 0;
+
+   return writer.size();
 }
 
-bool retro_serialize(void *, size_t)
+bool retro_serialize(void *data, size_t size)
 {
-   return false;
+   Mem_Writer writer(data, size);
+   return !emu->save_state(writer);
 }
 
-bool retro_unserialize(const void *, size_t)
+bool retro_unserialize(const void *data, size_t size)
 {
-   return false;
+   Mem_File_Reader reader(data, size);
+   return !emu->load_state(reader);
 }
 
 void *retro_get_memory_data(unsigned)
