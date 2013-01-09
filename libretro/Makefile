@@ -124,8 +124,8 @@ CXXSRCS := \
 	$(EMU_DIR)/Nes_Recorder.cpp \
 	$(EMU_DIR)/Nes_State.cpp \
 	$(EMU_DIR)/nes_util.cpp \
-	$(EMU_DIR)/Nes_Vrc6_Apu.cpp
-	#libretro.cpp
+	$(EMU_DIR)/Nes_Vrc6_Apu.cpp \
+	libretro.cpp
 
 LIBSRCS := \
 	../fex/Data_Reader.cpp \

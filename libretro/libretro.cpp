@@ -1,0 +1,207 @@
+#include "libretro.h"
+#include <stdint.h>
+#include <string.h>
+#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include "Nes_Emu.h"
+#include "fex/Data_Reader.h"
+
+static Nes_Emu *emu;
+
+void retro_init(void)
+{
+   delete emu;
+   emu = new Nes_Emu;
+}
+
+void retro_deinit(void)
+{
+   delete emu;
+   emu = 0;
+}
+
+unsigned retro_api_version(void)
+{
+   return RETRO_API_VERSION;
+}
+
+void retro_set_controller_port_device(unsigned, unsigned)
+{
+}
+
+void retro_get_system_info(struct retro_system_info *info)
+{
+   memset(info, 0, sizeof(*info));
+   info->library_name     = "QuickNES";
+   info->library_version  = "v1";
+   info->need_fullpath    = false;
+   info->valid_extensions = "nes|NES"; // Anything is fine, we don't care.
+}
+
+void retro_get_system_av_info(struct retro_system_av_info *info)
+{
+   info->timing = (struct retro_system_timing) {
+      .fps = Nes_Emu::frame_rate,
+      .sample_rate = 44100.0,
+   };
+
+   info->geometry = (struct retro_game_geometry) {
+      .base_width   = Nes_Emu::image_width,
+      .base_height  = Nes_Emu::image_height,
+      .max_width    = Nes_Emu::image_width,
+      .max_height   = Nes_Emu::image_height,
+      .aspect_ratio = 4.0 / 3.0,
+   };
+}
+
+static retro_video_refresh_t video_cb;
+static retro_audio_sample_t audio_cb;
+static retro_audio_sample_batch_t audio_batch_cb;
+static retro_environment_t environ_cb;
+static retro_input_poll_t input_poll_cb;
+static retro_input_state_t input_state_cb;
+
+void retro_set_environment(retro_environment_t cb)
+{
+   environ_cb = cb;
+}
+
+void retro_set_audio_sample(retro_audio_sample_t cb)
+{
+   audio_cb = cb;
+}
+
+void retro_set_audio_sample_batch(retro_audio_sample_batch_t cb)
+{
+   audio_batch_cb = cb;
+}
+
+void retro_set_input_poll(retro_input_poll_t cb)
+{
+   input_poll_cb = cb;
+}
+
+void retro_set_input_state(retro_input_state_t cb)
+{
+   input_state_cb = cb;
+}
+
+void retro_set_video_refresh(retro_video_refresh_t cb)
+{
+   video_cb = cb;
+}
+
+void retro_reset(void)
+{
+   if (emu)
+      emu->reset();
+}
+
+static void update_input(int pads[2])
+{
+   input_poll_cb();
+}
+
+void retro_run(void)
+{
+   int pads[2] = {0};
+   update_input(pads);
+
+   emu->emulate_frame(pads[0], pads[1]);
+   const Nes_Emu::frame_t &frame = emu->frame();
+
+   static uint32_t video_buffer[Nes_Emu::image_width * Nes_Emu::image_height];
+
+   const uint8_t *in_pixels = frame.pixels;
+   uint32_t *out_pixels = video_buffer;
+
+   for (unsigned h = 0; h < Nes_Emu::image_height;
+         h++, in_pixels += frame.pitch, out_pixels += Nes_Emu::image_width)
+   {
+      for (unsigned w = 0; w < Nes_Emu::image_width; w++)
+      {
+         out_pixels[w] = in_pixels[w];
+      }
+   }
+
+   int16_t samples[4096];
+   long read_samples = emu->read_samples(samples, 4096);
+   int16_t out_samples[4096];
+   for (long i = 0; i < read_samples; i++)
+      out_samples[(i << 1)] = out_samples[(i << 1) + 1] = samples[i];
+   audio_batch_cb(out_samples, read_samples);
+
+   video_cb(video_buffer, Nes_Emu::image_width, Nes_Emu::image_height,
+         Nes_Emu::image_width * sizeof(uint32_t));
+}
+
+bool retro_load_game(const struct retro_game_info *info)
+{
+   if (!emu)
+      return false;
+
+   enum retro_pixel_format fmt = RETRO_PIXEL_FORMAT_XRGB8888;
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &fmt))
+   {
+      fprintf(stderr, "XRGB8888 is not supported.\n");
+      return false;
+   }
+
+   emu->set_sample_rate(44100);
+   emu->set_equalizer(Nes_Emu::nes_eq);
+   emu->set_palette_range(0);
+
+   static uint8_t video_buffer[Nes_Emu::image_width * Nes_Emu::image_height];
+   emu->set_pixels(video_buffer, Nes_Emu::image_width);
+
+   Mem_File_Reader reader(info->data, info->size);
+   return !emu->load_ines(reader);
+}
+
+void retro_unload_game(void)
+{
+   emu->close();
+}
+
+unsigned retro_get_region(void)
+{
+   return RETRO_REGION_NTSC;
+}
+
+bool retro_load_game_special(unsigned, const struct retro_game_info *, size_t)
+{
+   return false;
+}
+
+size_t retro_serialize_size(void)
+{
+   return 0;
+}
+
+bool retro_serialize(void *, size_t)
+{
+   return false;
+}
+
+bool retro_unserialize(const void *, size_t)
+{
+   return false;
+}
+
+void *retro_get_memory_data(unsigned)
+{
+   return NULL;
+}
+
+size_t retro_get_memory_size(unsigned)
+{
+   return 0;
+}
+
+void retro_cheat_reset(void)
+{}
+
+void retro_cheat_set(unsigned, bool, const char *)
+{}
+
