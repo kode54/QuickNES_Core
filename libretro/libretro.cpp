@@ -233,14 +233,30 @@ bool retro_unserialize(const void *data, size_t size)
    return !emu->load_state(reader);
 }
 
-void *retro_get_memory_data(unsigned)
+void *retro_get_memory_data(unsigned id)
 {
-   return NULL;
+   switch (id)
+   {
+      case RETRO_MEMORY_SAVE_RAM:
+         return emu->high_mem();
+      case RETRO_MEMORY_SYSTEM_RAM:
+         return emu->low_mem();
+      default:
+         return 0;
+   }
 }
 
-size_t retro_get_memory_size(unsigned)
+size_t retro_get_memory_size(unsigned id)
 {
-   return 0;
+   switch (id)
+   {
+      case RETRO_MEMORY_SAVE_RAM:
+         return Nes_Emu::high_mem_size;
+      case RETRO_MEMORY_SYSTEM_RAM:
+         return Nes_Emu::low_mem_size;
+      default:
+         return 0;
+   }
 }
 
 void retro_cheat_reset(void)
