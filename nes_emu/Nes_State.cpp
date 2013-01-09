@@ -51,7 +51,7 @@ Nes_State::Nes_State()
 void Nes_State_::clear()
 {
 	memset( &nes, 0, sizeof nes );
-	nes.frame_count = invalid_frame_count;
+	nes.frame_count = static_cast<unsigned>(invalid_frame_count);
 	
 	nes_valid      = false;
 	cpu_valid      = false;

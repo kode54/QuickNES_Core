@@ -44,7 +44,11 @@ public:
 	
 	// See Multi_Buffer.h
 	blargg_err_t set_sample_rate( long rate, int msec = blip_default_length );
+
+#if 0 // What is this?
 	Multi_Buffer::sample_rate;
+#endif
+
 	void clock_rate( long );
 	void bass_freq( int );
 	void clear();

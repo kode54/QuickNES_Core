@@ -29,7 +29,7 @@ LIBRETRO_DIR := libretro
 ifeq ($(platform), unix)
    TARGET := libretro.so
    fpic := -fPIC
-   SHARED := -shared -Wl,-version-script=libretro/link.T
+   SHARED := -shared -Wl,-version-script=link.T -Wl,-no-undefined
 else ifeq ($(platform), osx)
    TARGET := libretro.dylib
    fpic := -fPIC
@@ -73,7 +73,7 @@ else
    TARGET := retro.dll
    CC = gcc
    CXX = g++
-   SHARED := -shared -static-libgcc -static-libstdc++ -Wl,-no-undefined -Wl,-version-script=libretro/link.T
+   SHARED := -shared -static-libgcc -static-libstdc++ -Wl,-no-undefined -Wl,-version-script=link.T
 endif
 
 all: $(TARGET)
@@ -117,7 +117,6 @@ CXXSRCS := \
 	$(EMU_DIR)/Nes_Mmc1.cpp \
 	$(EMU_DIR)/Nes_Mmc3.cpp \
 	$(EMU_DIR)/Nes_Namco_Apu.cpp \
-	$(EMU_DIR)/nes_ntsc.c \
 	$(EMU_DIR)/Nes_Oscs.cpp \
 	$(EMU_DIR)/Nes_Ppu.cpp \
 	$(EMU_DIR)/Nes_Ppu_Impl.cpp \
@@ -125,19 +124,26 @@ CXXSRCS := \
 	$(EMU_DIR)/Nes_Recorder.cpp \
 	$(EMU_DIR)/Nes_State.cpp \
 	$(EMU_DIR)/nes_util.cpp \
-	$(EMU_DIR)/Nes_Vrc6_Apu.cpp \
-	libretro.cpp
+	$(EMU_DIR)/Nes_Vrc6_Apu.cpp
+	#libretro.cpp
 
-CXXOBJ := $(CXXSRCS:.cpp=.o)
+LIBSRCS := \
+	../fex/Data_Reader.cpp \
+	../fex/blargg_errors.cpp \
+	../fex/blargg_common.cpp
+
+CXXOBJ := $(CXXSRCS:.cpp=.o) $(LIBSRCS:.cpp=.o)
 
 OBJS := $(CXXOBJ)
 
-DEFINES := -D__LIBRETRO__ $(PLATFORM_DEFINES) -Wall -Wno-multichar
+DEFINES := -D__LIBRETRO__ $(PLATFORM_DEFINES) -Wall -Wno-multichar -Wno-unused-variable -Wno-sign-compare -DNDEBUG
 
 CFLAGS += $(fpic) $(DEFINES) -std=gnu99
 CXXFLAGS += $(fpic) $(DEFINES)
 
 INCDIRS := -I$(EMU_DIR) -I. -I..
+
+LIBS := -lz
 
 $(TARGET): $(OBJS)
 ifeq ($(platform), ps3)
@@ -160,7 +166,7 @@ endif
 	$(CXX) -c -o $@ $< $(CXXFLAGS) $(INCDIRS)
 
 %.o: %.c
-	$(CC) -c -o $@ $< $(CFLAGS) $(INCDIRS)
+	$(CXX) -c -o $@ $< $(CXXFLAGS) $(INCDIRS)
 
 clean-objs:
 	rm -f $(OBJS)
