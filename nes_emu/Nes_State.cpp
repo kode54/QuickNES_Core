@@ -152,9 +152,14 @@ blargg_err_t Nes_State_::write_blocks( Nes_File_Writer& out ) const
 	if ( chr_size )
 		RETURN_ERR( out.write_block( FOUR_CHAR('CHRR'), chr, chr_size ) );
 	
+#ifdef __LIBRETRO__ // Maintain constant save state size.
+	if ( sram_size )
+		RETURN_ERR( out.write_block( FOUR_CHAR('SRAM'), sram, sram_size ) );
+#else
 	// only save sram if it's been modified
 	if ( sram_size && mem_differs( sram, 0xff, sram_size ) )
 		RETURN_ERR( out.write_block( FOUR_CHAR('SRAM'), sram, sram_size ) );
+#endif
 	
 	return 0;
 }
