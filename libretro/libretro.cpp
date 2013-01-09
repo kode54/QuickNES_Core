@@ -41,18 +41,17 @@ void retro_get_system_info(struct retro_system_info *info)
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-   info->timing = (struct retro_system_timing) {
-      .fps = Nes_Emu::frame_rate,
-      .sample_rate = 44100.0,
-   };
+   const retro_system_timing timing = { Nes_Emu::frame_rate, 44100.0 };
+   info->timing = timing;
 
-   info->geometry = (struct retro_game_geometry) {
-      .base_width   = Nes_Emu::image_width,
-      .base_height  = Nes_Emu::image_height,
-      .max_width    = Nes_Emu::image_width,
-      .max_height   = Nes_Emu::image_height,
-      .aspect_ratio = 4.0 / 3.0,
+   const retro_game_geometry geom = {
+      Nes_Emu::image_width,
+      Nes_Emu::image_height,
+      Nes_Emu::image_width,
+      Nes_Emu::image_height,
+      4.0 / 3.0,
    };
+   info->geometry = geom;
 }
 
 static retro_video_refresh_t video_cb;
