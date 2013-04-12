@@ -616,6 +616,14 @@ blargg_err_t Std_File_Reader::read_v( void* p, int s )
 	return blargg_ok;
 }
 
+#ifdef __CELLOS_LV2__
+int
+fseeko(FILE *stream, off_t pos, int whence)
+{
+   return fseek(stream, (long)pos, whence);
+}
+#endif
+
 blargg_err_t Std_File_Reader::seek_v( BOOST::uint64_t n )
 {
 #ifdef _WIN32
