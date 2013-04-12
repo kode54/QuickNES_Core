@@ -35,6 +35,21 @@ else ifeq ($(platform), osx)
    TARGET := $(TARGET_NAME)_libretro.dylib
    fpic := -fPIC
    SHARED := -dynamiclib
+else ifeq ($(platform), ios)
+   TARGET := snes9x_next_libretro.dylib
+   fpic := -fPIC
+   SHARED := -dynamiclib
+
+   CC = clang -arch armv7 -isysroot $(IOSSDK)
+   PLATFORM_DEFINES += -DIOS
+else ifeq ($(platform), qnx)
+	TARGET := $(TARGET_NAME)_libretro.so
+	fpic := -fPIC
+	SHARED := -shared -Wl,--version-script=link.T
+
+   CC = qcc -Vgcc_ntoarmv7le
+   AR = qcc -Vgcc_ntoarmv7le
+   PLATFORM_DEFINES += -D__BLACKBERRY_QNX__
 else ifeq ($(platform), ps3)
    TARGET := $(TARGET_NAME)_libretro_ps3.a
    CXX = $(CELL_SDK)/host-win32/ppu/bin/ppu-lv2-g++.exe
