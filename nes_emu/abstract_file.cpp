@@ -220,6 +220,7 @@ Auto_File_Writer::~Auto_File_Writer()
 	#endif
 }
 
+#ifndef __LIBRETRO__
 #ifdef HAVE_ZLIB_H
 
 #include "zlib.h"
@@ -302,5 +303,6 @@ void Gzip_File_Writer::close()
 		file_ = 0;
 	}
 }
+#endif
 
 #endif
