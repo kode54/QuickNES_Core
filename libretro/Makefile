@@ -36,7 +36,7 @@ else ifeq ($(platform), osx)
    fpic := -fPIC
    SHARED := -dynamiclib
 else ifeq ($(platform), ios)
-   TARGET := snes9x_next_libretro.dylib
+   TARGET := snes9x_next_libretro_ios.dylib
    fpic := -fPIC
    SHARED := -dynamiclib
 
