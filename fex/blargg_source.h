@@ -69,13 +69,12 @@ otherwise continues normally. */
 			return blargg_err_memory;\
 	} while ( 0 )
 
-/* The usual min/max functions for built-in types.
+/* The usual min/max functions for built-in types. */
 
 template<typename T> T min( T x, T y ) { return x < y ? x : y; }
-template<typename T> T max( T x, T y ) { return x > y ? x : y; } */
-#define BLARGG_DEF_MIN_MAX( type ) \
-	static inline type blargg_min( type x, type y ) { if ( y < x ) x = y; return x; }\
-	static inline type blargg_max( type x, type y ) { if ( x < y ) x = y; return x; }
+template<typename T> T max( T x, T y ) { return x > y ? x : y; }
+
+#define BLARGG_DEF_MIN_MAX( type )
 
 BLARGG_DEF_MIN_MAX( int )
 BLARGG_DEF_MIN_MAX( unsigned )
@@ -86,12 +85,6 @@ BLARGG_DEF_MIN_MAX( double )
 #if __WORDSIZE != 64
 BLARGG_DEF_MIN_MAX( BOOST::uint64_t )
 #endif
-
-#undef  min
-#define min blargg_min
-
-#undef  max
-#define max blargg_max
 
 // typedef unsigned char byte;
 typedef unsigned char blargg_byte;
