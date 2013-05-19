@@ -6,6 +6,7 @@
 #include <string.h>
 #include "blargg_endian.h"
 #include "Nes_State.h"
+#include <stdint.h>
 
 /* Copyright (C) 2004-2006 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
@@ -84,7 +85,7 @@ blargg_err_t Nes_Ppu_Impl::open_chr( byte const* new_chr, long chr_data_size )
 	tile_cache_mem = BLARGG_NEW byte [tile_count * sizeof (cached_tile_t) * 2 + cache_line_size];
 	CHECK_ALLOC( tile_cache_mem );
 	tile_cache = (cached_tile_t*) (tile_cache_mem + cache_line_size -
-			(unsigned long) tile_cache_mem % cache_line_size);
+			(uintptr_t) tile_cache_mem % cache_line_size);
 	flipped_tiles = tile_cache + tile_count;
 	
 	// rebuild cache
