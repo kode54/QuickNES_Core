@@ -49,7 +49,8 @@ else ifeq ($(platform), qnx)
 	SHARED := -shared -Wl,--version-script=link.T
 
    CC = qcc -Vgcc_ntoarmv7le
-   AR = qcc -Vgcc_ntoarmv7le
+   CXX = QCC -Vgcc_ntoarmv7le
+   AR = QCC -Vgcc_ntoarmv7le
    PLATFORM_DEFINES += -D__BLACKBERRY_QNX__
 else ifeq ($(platform), ps3)
    TARGET := $(TARGET_NAME)_libretro_ps3.a
