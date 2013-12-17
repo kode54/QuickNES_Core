@@ -36,19 +36,21 @@ else ifeq ($(platform), osx)
    fpic := -fPIC
    SHARED := -dynamiclib
 else ifeq ($(platform), ios)
-   TARGET := snes9x_next_libretro_ios.dylib
+   TARGET := $(TARGET_NAME)_libretro_ios.dylib
    fpic := -fPIC
    SHARED := -dynamiclib
 
-   CC = clang -arch armv7 -isysroot $(IOSSDK)
-   PLATFORM_DEFINES += -DIOS
+   CC = clang -arch armv7 -isysroot $(IOSSDK) -miphoneos-version-min=5.0
+   CXX = clang++ -arch armv7 -isysroot $(IOSSDK) -miphoneos-version-min=5.0
+   PLATFORM_DEFINES += -DIOS -miphoneos-version-min=5.0
 else ifeq ($(platform), qnx)
 	TARGET := $(TARGET_NAME)_libretro_qnx.so
 	fpic := -fPIC
 	SHARED := -shared -Wl,--version-script=link.T
 
    CC = qcc -Vgcc_ntoarmv7le
-   AR = qcc -Vgcc_ntoarmv7le
+   CXX = QCC -Vgcc_ntoarmv7le
+   AR = QCC -Vgcc_ntoarmv7le
    PLATFORM_DEFINES += -D__BLACKBERRY_QNX__
 else ifeq ($(platform), ps3)
    TARGET := $(TARGET_NAME)_libretro_ps3.a
@@ -91,6 +93,27 @@ else ifeq ($(platform), wii)
    AR = $(DEVKITPPC)/bin/powerpc-eabi-ar$(EXE_EXT)
    PLATFORM_DEFINES += -DGEKKO -DHW_RVL -mrvl -mcpu=750 -meabi -mhard-float
 	STATIC_LINKING = 1
+else ifneq (,$(findstring armv,$(platform)))
+   TARGET := $(TARGET_NAME)_libretro.so
+   fpic := -fPIC
+   SHARED := -shared -Wl,-version-script=link.T -Wl,-no-undefined
+   CC = gcc
+ifneq (,$(findstring cortexa8,$(platform)))
+   PLATFORM_DEFINES += -marm -mcpu=cortex-a8
+else ifneq (,$(findstring cortexa9,$(platform)))
+   PLATFORM_DEFINES += -marm -mcpu=cortex-a9
+endif
+   PLATFORM_DEFINES += -marm
+ifneq (,$(findstring neon,$(platform)))
+   PLATFORM_DEFINES += -mfpu=neon
+   HAVE_NEON = 1
+endif
+ifneq (,$(findstring softfloat,$(platform)))
+   PLATFORM_DEFINES += -mfloat-abi=softfp
+else ifneq (,$(findstring hardfloat,$(platform)))
+   PLATFORM_DEFINES += -mfloat-abi=hard
+endif
+   PLATFORM_DEFINES += -DARM
 else
    TARGET := $(TARGET_NAME)_libretro.dll
    CC = gcc
