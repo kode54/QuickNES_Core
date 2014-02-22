@@ -72,6 +72,13 @@ else ifeq ($(platform), psl1ght)
    AR = $(PS3DEV)/ppu/bin/ppu-ar$(EXE_EXT)
    PLATFORM_DEFINES := -D__CELLOS_LV2__
 	STATIC_LINKING = 1
+else ifeq ($(platform), psp1)
+   TARGET := $(TARGET_NAME)_libretro_psp1.a
+	CC = psp-gcc
+	CXX = psp-g++
+	AR = psp-ar
+   PLATFORM_DEFINES := -DPSP -G0 -DLSB_FIRST
+	STATIC_LINKING = 1
 else ifeq ($(platform), xenon)
    TARGET := $(TARGET_NAME)_libretro_xenon360.a
    CC = xenon-gcc$(EXE_EXT)
