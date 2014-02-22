@@ -74,9 +74,9 @@ else ifeq ($(platform), psl1ght)
 	STATIC_LINKING = 1
 else ifeq ($(platform), psp1)
    TARGET := $(TARGET_NAME)_libretro_psp1.a
-	CC = psp-gcc
-	CXX = psp-g++
-	AR = psp-ar
+	CC = psp-gcc$(EXE_EXT)
+	CXX = psp-g++$(EXE_EXT)
+	AR = psp-ar$(EXE_EXT)
    PLATFORM_DEFINES := -DPSP -G0 -DLSB_FIRST
 	STATIC_LINKING = 1
 else ifeq ($(platform), xenon)
