@@ -43,17 +43,24 @@ else ifeq ($(platform), osx)
    TARGET := $(TARGET_NAME)_libretro.dylib
    fpic := -fPIC
    SHARED := -dynamiclib
-ifneq ($(arch),ppc)
-   fpic += -mmacosx-version-min=10.6
+OSXVER = `sw_vers -productVersion | cut -c 4`
+ifneq ($(OSXVER),9)
+   fpic += -mmacosx-version-min=10.5
 endif
 else ifeq ($(platform), ios)
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    fpic := -fPIC
    SHARED := -dynamiclib
 
-   CC = clang -arch armv7 -isysroot $(IOSSDK) -miphoneos-version-min=5.0
-   CXX = clang++ -arch armv7 -isysroot $(IOSSDK) -miphoneos-version-min=5.0
-   PLATFORM_DEFINES += -DIOS -miphoneos-version-min=5.0
+   CC = clang -arch armv7 -isysroot $(IOSSDK)
+	CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
+   PLATFORM_DEFINES += -DIOS
+OSXVER = `sw_vers -productVersion | cut -c 4`
+ifneq ($(OSXVER),9)
+   CC += -miphoneos-version-min=5.0
+   CXX +=  -miphoneos-version-min=5.0
+   PLATFORM_DEFINES += -miphoneos-version-min=5.0
+endif
 else ifeq ($(platform), qnx)
 	TARGET := $(TARGET_NAME)_libretro_qnx.so
 	fpic := -fPIC
