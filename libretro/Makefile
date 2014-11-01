@@ -8,6 +8,10 @@ else ifneq ($(findstring MINGW,$(shell uname -a)),)
    platform = win
 else ifneq ($(findstring Darwin,$(shell uname -a)),)
    platform = osx
+   arch = intel
+ifeq ($(shell uname -p),powerpc)
+   arch = ppc
+endif
 else ifneq ($(findstring win,$(shell uname -a)),)
    platform = win
 endif
@@ -20,6 +24,10 @@ EXE_EXT = .exe
    system_platform = win
 else ifneq ($(findstring Darwin,$(shell uname -a)),)
    system_platform = osx
+   arch = intel
+ifeq ($(shell uname -p),powerpc)
+   arch = ppc
+endif
 else ifneq ($(findstring MINGW,$(shell uname -a)),)
    system_platform = win
 endif
@@ -35,14 +43,30 @@ else ifeq ($(platform), osx)
    TARGET := $(TARGET_NAME)_libretro.dylib
    fpic := -fPIC
    SHARED := -dynamiclib
+   OSXVER = `sw_vers -productVersion | cut -d. -f 2`
+   OSX_LT_MAVERICKS = `(( $(OSXVER) <= 9)) && echo "YES"`
+ifeq ($(OSX_LT_MAVERICKS),"YES")
+   fpic += -mmacosx-version-min=10.5
+endif
 else ifeq ($(platform), ios)
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    fpic := -fPIC
    SHARED := -dynamiclib
+	
+ifeq ($(IOSSDK),)
+   IOSSDK := $(shell xcrun -sdk iphoneos -show-sdk-path)
+endif
 
-   CC = clang -arch armv7 -isysroot $(IOSSDK) -miphoneos-version-min=5.0
-   CXX = clang++ -arch armv7 -isysroot $(IOSSDK) -miphoneos-version-min=5.0
-   PLATFORM_DEFINES += -DIOS -miphoneos-version-min=5.0
+   CC = clang -arch armv7 -isysroot $(IOSSDK)
+	CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
+   PLATFORM_DEFINES += -DIOS
+   OSXVER = `sw_vers -productVersion | cut -d. -f 2`
+   OSX_LT_MAVERICKS = `(( $(OSXVER) <= 9)) && echo "YES"`
+ifeq ($(OSX_LT_MAVERICKS),"YES")
+   CC += -miphoneos-version-min=5.0
+   CXX +=  -miphoneos-version-min=5.0
+   PLATFORM_DEFINES += -miphoneos-version-min=5.0
+endif
 else ifeq ($(platform), qnx)
 	TARGET := $(TARGET_NAME)_libretro_qnx.so
 	fpic := -fPIC
@@ -71,6 +95,13 @@ else ifeq ($(platform), psl1ght)
    CXX = $(PS3DEV)/ppu/bin/ppu-g++$(EXE_EXT)
    AR = $(PS3DEV)/ppu/bin/ppu-ar$(EXE_EXT)
    PLATFORM_DEFINES := -D__CELLOS_LV2__
+	STATIC_LINKING = 1
+else ifeq ($(platform), psp1)
+   TARGET := $(TARGET_NAME)_libretro_psp1.a
+	CC = psp-gcc$(EXE_EXT)
+	CXX = psp-g++$(EXE_EXT)
+	AR = psp-ar$(EXE_EXT)
+   PLATFORM_DEFINES := -DPSP -G0 -DLSB_FIRST
 	STATIC_LINKING = 1
 else ifeq ($(platform), xenon)
    TARGET := $(TARGET_NAME)_libretro_xenon360.a
@@ -131,55 +162,11 @@ else
    CXXFLAGS += -O3
 endif
 
-EMU_DIR := ../nes_emu
+CORE_DIR := ..
 
-CXXSRCS := \
-	$(EMU_DIR)/abstract_file.cpp \
-	$(EMU_DIR)/apu_state.cpp \
-	$(EMU_DIR)/Blip_Buffer.cpp \
-	$(EMU_DIR)/Effects_Buffer.cpp \
-	$(EMU_DIR)/Mapper_Fme7.cpp \
-	$(EMU_DIR)/Mapper_Mmc5.cpp \
-	$(EMU_DIR)/Mapper_Namco106.cpp \
-	$(EMU_DIR)/Mapper_Vrc6.cpp \
-	$(EMU_DIR)/misc_mappers.cpp \
-	$(EMU_DIR)/Multi_Buffer.cpp \
-	$(EMU_DIR)/Nes_Apu.cpp \
-	$(EMU_DIR)/Nes_Buffer.cpp \
-	$(EMU_DIR)/Nes_Cart.cpp \
-	$(EMU_DIR)/Nes_Core.cpp \
-	$(EMU_DIR)/Nes_Cpu.cpp \
-	$(EMU_DIR)/nes_data.cpp \
-	$(EMU_DIR)/Nes_Effects_Buffer.cpp \
-	$(EMU_DIR)/Nes_Emu.cpp \
-	$(EMU_DIR)/Nes_File.cpp \
-	$(EMU_DIR)/Nes_Film.cpp \
-	$(EMU_DIR)/Nes_Film_Data.cpp \
-	$(EMU_DIR)/Nes_Film_Packer.cpp \
-	$(EMU_DIR)/Nes_Fme7_Apu.cpp \
-	$(EMU_DIR)/Nes_Mapper.cpp \
-	$(EMU_DIR)/nes_mappers.cpp \
-	$(EMU_DIR)/Nes_Mmc1.cpp \
-	$(EMU_DIR)/Nes_Mmc3.cpp \
-	$(EMU_DIR)/Nes_Namco_Apu.cpp \
-	$(EMU_DIR)/Nes_Oscs.cpp \
-	$(EMU_DIR)/Nes_Ppu.cpp \
-	$(EMU_DIR)/Nes_Ppu_Impl.cpp \
-	$(EMU_DIR)/Nes_Ppu_Rendering.cpp \
-	$(EMU_DIR)/Nes_Recorder.cpp \
-	$(EMU_DIR)/Nes_State.cpp \
-	$(EMU_DIR)/nes_util.cpp \
-	$(EMU_DIR)/Nes_Vrc6_Apu.cpp \
-	libretro.cpp
+include Makefile.common
 
-LIBSRCS := \
-	../fex/Data_Reader.cpp \
-	../fex/blargg_errors.cpp \
-	../fex/blargg_common.cpp
-
-CXXOBJ := $(CXXSRCS:.cpp=.o) $(LIBSRCS:.cpp=.o)
-
-OBJS := $(CXXOBJ)
+OBJECTS := $(SOURCES_CXX:.cpp=.o)
 
 DEFINES := -D__LIBRETRO__ $(PLATFORM_DEFINES) -Wall -Wno-multichar -Wno-unused-variable -Wno-sign-compare -DNDEBUG \
 	-DSTD_AUTO_FILE_WRITER=Std_File_Writer \
@@ -190,26 +177,25 @@ DEFINES := -D__LIBRETRO__ $(PLATFORM_DEFINES) -Wall -Wno-multichar -Wno-unused-v
 CFLAGS += $(fpic) $(DEFINES) -std=gnu99
 CXXFLAGS += $(fpic) $(DEFINES)
 
-INCDIRS := -I$(EMU_DIR) -I. -I..
 
-$(TARGET): $(OBJS)
+$(TARGET): $(OBJECTS)
 ifeq ($(STATIC_LINKING), 1)
-	$(AR) rcs $@ $(OBJS)
+	$(AR) rcs $@ $(OBJECTS)
 else
-	$(CXX) -o $@ $(SHARED) $(OBJS) $(LDFLAGS) $(LIBS)
+	$(CXX) -o $@ $(SHARED) $(OBJECTS) $(LDFLAGS) $(LIBS)
 endif
 
 %.o: %.cpp
-	$(CXX) -c -o $@ $< $(CXXFLAGS) $(INCDIRS)
+	$(CXX) -c -o $@ $< $(CXXFLAGS) $(INCFLAGS)
 
 %.o: %.c
-	$(CXX) -c -o $@ $< $(CXXFLAGS) $(INCDIRS)
+	$(CXX) -c -o $@ $< $(CXXFLAGS) $(INCFLAGS)
 
 clean-objs:
-	rm -f $(OBJS)
+	rm -f $(OBJECTS)
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(OBJECTS)
 	rm -f $(TARGET)
 
 .PHONY: clean clean-objs
