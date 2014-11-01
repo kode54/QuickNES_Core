@@ -1,0 +1,43 @@
+INCFLAGS := -I$(CORE_DIR) -I$(CORE_DIR)/nes_emu -I$(CORE_DIR)/libretro -I$(CORE_DIR)/fex
+
+SOURCES_CXX := \
+	$(CORE_DIR)/libretro/libretro.cpp \
+	$(CORE_DIR)/nes_emu/abstract_file.cpp \
+	$(CORE_DIR)/nes_emu/apu_state.cpp \
+	$(CORE_DIR)/nes_emu/Blip_Buffer.cpp \
+	$(CORE_DIR)/nes_emu/Effects_Buffer.cpp \
+	$(CORE_DIR)/nes_emu/Mapper_Fme7.cpp \
+	$(CORE_DIR)/nes_emu/Mapper_Mmc5.cpp \
+	$(CORE_DIR)/nes_emu/Mapper_Namco106.cpp \
+	$(CORE_DIR)/nes_emu/Mapper_Vrc6.cpp \
+	$(CORE_DIR)/nes_emu/misc_mappers.cpp \
+	$(CORE_DIR)/nes_emu/Multi_Buffer.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Apu.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Buffer.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Cart.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Core.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Cpu.cpp \
+	$(CORE_DIR)/nes_emu/nes_data.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Effects_Buffer.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Emu.cpp \
+	$(CORE_DIR)/nes_emu/Nes_File.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Film.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Film_Data.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Film_Packer.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Fme7_Apu.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Mapper.cpp \
+	$(CORE_DIR)/nes_emu/nes_mappers.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Mmc1.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Mmc3.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Namco_Apu.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Oscs.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Ppu.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Ppu_Impl.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Ppu_Rendering.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Recorder.cpp \
+	$(CORE_DIR)/nes_emu/Nes_State.cpp \
+	$(CORE_DIR)/nes_emu/nes_util.cpp \
+	$(CORE_DIR)/nes_emu/Nes_Vrc6_Apu.cpp \
+	$(CORE_DIR)/fex/Data_Reader.cpp \
+	$(CORE_DIR)/fex/blargg_errors.cpp \
+	$(CORE_DIR)/fex/blargg_common.cpp

@@ -162,55 +162,11 @@ else
    CXXFLAGS += -O3
 endif
 
-EMU_DIR := ../nes_emu
+CORE_DIR := ..
 
-CXXSRCS := \
-	$(EMU_DIR)/abstract_file.cpp \
-	$(EMU_DIR)/apu_state.cpp \
-	$(EMU_DIR)/Blip_Buffer.cpp \
-	$(EMU_DIR)/Effects_Buffer.cpp \
-	$(EMU_DIR)/Mapper_Fme7.cpp \
-	$(EMU_DIR)/Mapper_Mmc5.cpp \
-	$(EMU_DIR)/Mapper_Namco106.cpp \
-	$(EMU_DIR)/Mapper_Vrc6.cpp \
-	$(EMU_DIR)/misc_mappers.cpp \
-	$(EMU_DIR)/Multi_Buffer.cpp \
-	$(EMU_DIR)/Nes_Apu.cpp \
-	$(EMU_DIR)/Nes_Buffer.cpp \
-	$(EMU_DIR)/Nes_Cart.cpp \
-	$(EMU_DIR)/Nes_Core.cpp \
-	$(EMU_DIR)/Nes_Cpu.cpp \
-	$(EMU_DIR)/nes_data.cpp \
-	$(EMU_DIR)/Nes_Effects_Buffer.cpp \
-	$(EMU_DIR)/Nes_Emu.cpp \
-	$(EMU_DIR)/Nes_File.cpp \
-	$(EMU_DIR)/Nes_Film.cpp \
-	$(EMU_DIR)/Nes_Film_Data.cpp \
-	$(EMU_DIR)/Nes_Film_Packer.cpp \
-	$(EMU_DIR)/Nes_Fme7_Apu.cpp \
-	$(EMU_DIR)/Nes_Mapper.cpp \
-	$(EMU_DIR)/nes_mappers.cpp \
-	$(EMU_DIR)/Nes_Mmc1.cpp \
-	$(EMU_DIR)/Nes_Mmc3.cpp \
-	$(EMU_DIR)/Nes_Namco_Apu.cpp \
-	$(EMU_DIR)/Nes_Oscs.cpp \
-	$(EMU_DIR)/Nes_Ppu.cpp \
-	$(EMU_DIR)/Nes_Ppu_Impl.cpp \
-	$(EMU_DIR)/Nes_Ppu_Rendering.cpp \
-	$(EMU_DIR)/Nes_Recorder.cpp \
-	$(EMU_DIR)/Nes_State.cpp \
-	$(EMU_DIR)/nes_util.cpp \
-	$(EMU_DIR)/Nes_Vrc6_Apu.cpp \
-	libretro.cpp
+include Makefile.common
 
-LIBSRCS := \
-	../fex/Data_Reader.cpp \
-	../fex/blargg_errors.cpp \
-	../fex/blargg_common.cpp
-
-CXXOBJ := $(CXXSRCS:.cpp=.o) $(LIBSRCS:.cpp=.o)
-
-OBJS := $(CXXOBJ)
+OBJECTS := $(SOURCES_CXX:.cpp=.o)
 
 DEFINES := -D__LIBRETRO__ $(PLATFORM_DEFINES) -Wall -Wno-multichar -Wno-unused-variable -Wno-sign-compare -DNDEBUG \
 	-DSTD_AUTO_FILE_WRITER=Std_File_Writer \
@@ -221,26 +177,25 @@ DEFINES := -D__LIBRETRO__ $(PLATFORM_DEFINES) -Wall -Wno-multichar -Wno-unused-v
 CFLAGS += $(fpic) $(DEFINES) -std=gnu99
 CXXFLAGS += $(fpic) $(DEFINES)
 
-INCDIRS := -I$(EMU_DIR) -I. -I..
 
-$(TARGET): $(OBJS)
+$(TARGET): $(OBJECTS)
 ifeq ($(STATIC_LINKING), 1)
-	$(AR) rcs $@ $(OBJS)
+	$(AR) rcs $@ $(OBJECTS)
 else
-	$(CXX) -o $@ $(SHARED) $(OBJS) $(LDFLAGS) $(LIBS)
+	$(CXX) -o $@ $(SHARED) $(OBJECTS) $(LDFLAGS) $(LIBS)
 endif
 
 %.o: %.cpp
-	$(CXX) -c -o $@ $< $(CXXFLAGS) $(INCDIRS)
+	$(CXX) -c -o $@ $< $(CXXFLAGS) $(INCFLAGS)
 
 %.o: %.c
-	$(CXX) -c -o $@ $< $(CXXFLAGS) $(INCDIRS)
+	$(CXX) -c -o $@ $< $(CXXFLAGS) $(INCFLAGS)
 
 clean-objs:
-	rm -f $(OBJS)
+	rm -f $(OBJECTS)
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(OBJECTS)
 	rm -f $(TARGET)
 
 .PHONY: clean clean-objs
